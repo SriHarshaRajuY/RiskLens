@@ -1,0 +1,25 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    ports:
+      - "5000:5000"
+    env_file:
+      - server/.env
+  workers:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    command: ["npm", "run", "start:workers", "--workspace", "server"]
+    env_file:
+      - server/.env
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
+      NEXT_PUBLIC_SOCKET_URL: http://localhost:5000

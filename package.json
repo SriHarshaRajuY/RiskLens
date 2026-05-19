@@ -1,0 +1,29 @@
+{
+  "name": "risklens-portfolio-analytics",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RiskLens is a production-style portfolio analytics and risk alert SaaS platform.",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "node scripts/run-workspace-script.mjs dev server",
+    "dev:server": "node scripts/run-workspace-script.mjs dev server",
+    "dev:workers": "node scripts/run-workspace-script.mjs dev:workers server",
+    "dev:client": "node scripts/run-workspace-script.mjs dev client",
+    "build": "node scripts/run-workspace-script.mjs build server client",
+    "test": "node scripts/run-workspace-script.mjs test server",
+    "lint": "node scripts/run-workspace-script.mjs lint client server",
+    "seed": "node scripts/run-workspace-script.mjs seed server",
+    "benchmark:summary": "node scripts/run-workspace-script.mjs benchmark:summary server"
+  },
+  "engines": {
+    "node": ">=20.11.0",
+    "npm": ">=10.0.0"
+  },
+  "overrides": {
+    "@types/express": "4.17.25",
+    "@types/express-serve-static-core": "4.19.8"
+  }
+}

@@ -1,0 +1,328 @@
+import { createHash } from "node:crypto";
+import { Worker } from "bullmq";
+import { z } from "zod";
+import { env } from "../config/env.js";
+import { logger } from "../config/logger.js";
+import { createRedisConnection } from "../config/redis.js";
+import { analyticsWarmupQueue } from "../queues/analyticsWarmup.queue.js";
+import { alertEvaluationQueue } from "../queues/alertEvaluation.queue.js";
+import { snapshotQueue } from "../queues/snapshot.queue.js";
+import type { CsvProcessingJobData } from "../queues/csvProcessing.queue.js";
+import { emitToUser } from "../sockets/socketServer.js";
+import { activityService } from "../modules/activity/activity.service.js";
+import { buildHoldings, replayTrades, type TradeLedgerEntry } from "../modules/analytics/holdings.service.js";
+import { Trade } from "../modules/trades/trade.model.js";
+import { UploadJob } from "../modules/uploads/uploadJob.model.js";
+import { metricsService } from "../modules/metrics/metrics.service.js";
+import { invalidatePortfolioCache } from "../utils/cache.js";
+import { parseCsv } from "../utils/csvParser.js";
+
+const csvRowSchema = z.object({
+  date: z.coerce.date(),
+  symbol: z
+    .string()
+    .trim()
+    .min(1)
+    .max(12)
+    .regex(/^[A-Za-z][A-Za-z0-9.-]*$/)
+    .transform((value) => value.toUpperCase()),
+  side: z
+    .string()
+    .trim()
+    .transform((value) => value.toUpperCase())
+    .pipe(z.enum(["BUY", "SELL"])),
+  quantity: z.coerce.number().positive(),
+  price: z.coerce.number().positive(),
+  fees: z.coerce.number().min(0).default(0)
+});
+
+type CsvValidationError = {
+  row: number;
+  code: string;
+  message: string;
+};
+
+function idempotencyKey(portfolioId: string, row: z.infer<typeof csvRowSchema>): string {
+  return createHash("sha256")
+    .update(`${portfolioId}:${row.date.toISOString()}:${row.symbol}:${row.side}:${row.quantity}:${row.price}:${row.fees}`)
+    .digest("hex");
+}
+
+function toLedgerEntry(input: {
+  symbol: string;
+  side: "BUY" | "SELL";
+  quantity: number;
+  price: number;
+  fees?: number;
+  tradeDate: Date;
+}): TradeLedgerEntry {
+  return {
+    symbol: input.symbol,
+    side: input.side,
+    quantity: input.quantity,
+    price: input.price,
+    fees: input.fees,
+    tradeDate: input.tradeDate
+  };
+}
+
+async function emitProgress(data: CsvProcessingJobData, payload: Record<string, unknown>): Promise<void> {
+  emitToUser(data.userId, "upload.progress", {
+    uploadJobId: data.uploadJobId,
+    portfolioId: data.portfolioId,
+    ...payload
+  });
+}
+
+export const csvWorker = new Worker<CsvProcessingJobData>(
+  "csv-processing",
+  async (job) => {
+    const data = job.data;
+    const startedAt = performance.now();
+
+    logger.info(
+      {
+        requestId: data.requestId,
+        queueJobId: job.id,
+        uploadJobId: data.uploadJobId,
+        userId: data.userId,
+        portfolioId: data.portfolioId
+      },
+      "CSV worker started"
+    );
+
+    const uploadJob = await UploadJob.findByIdAndUpdate(
+      data.uploadJobId,
+      { status: "PROCESSING", startedAt: new Date() },
+      { new: true }
+    );
+
+    if (!uploadJob) {
+      throw new Error(`Upload job ${data.uploadJobId} not found`);
+    }
+
+    await emitProgress(data, { status: "PROCESSING", progress: 1 });
+
+    try {
+      const rows = await parseCsv(data.csvContent);
+      const existingTrades = await Trade.find({ userId: data.userId, portfolioId: data.portfolioId })
+        .sort({ tradeDate: 1, createdAt: 1 })
+        .lean();
+      const ledger = existingTrades.map((trade) =>
+        toLedgerEntry({
+          symbol: trade.symbol,
+          side: trade.side,
+          quantity: trade.quantity,
+          price: trade.price,
+          fees: trade.fees,
+          tradeDate: trade.tradeDate
+        })
+      );
+
+      const seenKeys = new Set<string>();
+      const errors: CsvValidationError[] = [];
+      const validDocs: Array<Record<string, unknown>> = [];
+
+      for (const [index, rawRow] of rows.entries()) {
+        const rowNumber = index + 2;
+        const parsed = csvRowSchema.safeParse(rawRow);
+
+        if (!parsed.success) {
+          errors.push({
+            row: rowNumber,
+            code: "INVALID_CSV_ROW",
+            message: parsed.error.issues.map((issue) => issue.message).join("; ")
+          });
+          continue;
+        }
+
+        const key = idempotencyKey(data.portfolioId, parsed.data);
+        if (seenKeys.has(key)) {
+          errors.push({
+            row: rowNumber,
+            code: "DUPLICATE_CSV_ROW",
+            message: "Duplicate trade row in upload"
+          });
+          continue;
+        }
+
+        const candidate = toLedgerEntry({
+          symbol: parsed.data.symbol,
+          side: parsed.data.side,
+          quantity: parsed.data.quantity,
+          price: parsed.data.price,
+          fees: parsed.data.fees,
+          tradeDate: parsed.data.date
+        });
+
+        try {
+          replayTrades([...ledger, candidate]);
+          ledger.push(candidate);
+          seenKeys.add(key);
+          validDocs.push({
+            userId: data.userId,
+            portfolioId: data.portfolioId,
+            symbol: parsed.data.symbol,
+            side: parsed.data.side,
+            quantity: parsed.data.quantity,
+            price: parsed.data.price,
+            fees: parsed.data.fees,
+            tradeDate: parsed.data.date,
+            source: "CSV",
+            uploadJobId: data.uploadJobId,
+            idempotencyKey: key
+          });
+        } catch (error) {
+          errors.push({
+            row: rowNumber,
+            code: "LEDGER_VALIDATION_FAILED",
+            message: error instanceof Error ? error.message : "Trade would make portfolio ledger invalid"
+          });
+        }
+
+        if (index % 50 === 0) {
+          const progress = Math.max(5, Math.round((index / Math.max(rows.length, 1)) * 80));
+          await job.updateProgress(progress);
+          await UploadJob.findByIdAndUpdate(data.uploadJobId, {
+            totalRows: rows.length,
+            processedRows: index + 1,
+            validRows: validDocs.length,
+            invalidRows: errors.length
+          });
+          await emitProgress(data, {
+            status: "PROCESSING",
+            progress,
+            processedRows: index + 1,
+            totalRows: rows.length
+          });
+        }
+      }
+
+      for (let index = 0; index < validDocs.length; index += env.CSV_BATCH_SIZE) {
+        const batch = validDocs.slice(index, index + env.CSV_BATCH_SIZE);
+        if (batch.length > 0) {
+          await Trade.insertMany(batch, { ordered: false });
+        }
+      }
+
+      const status = errors.length === 0 ? "COMPLETED" : validDocs.length > 0 ? "PARTIAL_FAILURE" : "FAILED";
+      const completedAt = new Date();
+
+      await UploadJob.findByIdAndUpdate(data.uploadJobId, {
+        status,
+        totalRows: rows.length,
+        processedRows: rows.length,
+        validRows: validDocs.length,
+        invalidRows: errors.length,
+        rowErrors: errors.slice(0, 250),
+        completedAt,
+        ...(status === "FAILED" ? { failedAt: completedAt } : {})
+      });
+
+      if (status === "FAILED") {
+        metricsService.increment("failedUploads");
+      }
+
+      await Promise.all([
+        invalidatePortfolioCache(data.portfolioId, data.requestId),
+        activityService.record({
+          userId: data.userId,
+          portfolioId: data.portfolioId,
+          type: status === "FAILED" ? "CSV_UPLOAD_FAILED" : "CSV_UPLOAD_COMPLETED",
+          message: `${data.originalFileName}: ${validDocs.length} trades imported, ${errors.length} rejected`,
+          metadata: {
+            uploadJobId: data.uploadJobId,
+            status,
+            validRows: validDocs.length,
+            invalidRows: errors.length
+          }
+        }),
+        analyticsWarmupQueue.add("warm-analytics-cache", {
+          userId: data.userId,
+          portfolioId: data.portfolioId,
+          requestId: data.requestId
+        }),
+        snapshotQueue.add("generate-snapshot", {
+          userId: data.userId,
+          portfolioId: data.portfolioId,
+          requestId: data.requestId
+        }),
+        alertEvaluationQueue.add("evaluate-alerts", {
+          userId: data.userId,
+          portfolioId: data.portfolioId,
+          requestId: data.requestId
+        })
+      ]);
+
+      await buildHoldings(ledger, data.requestId);
+      await job.updateProgress(100);
+      await emitProgress(data, {
+        status,
+        progress: 100,
+        processedRows: rows.length,
+        validRows: validDocs.length,
+        invalidRows: errors.length
+      });
+
+      logger.info(
+        {
+          requestId: data.requestId,
+          queueJobId: job.id,
+          uploadJobId: data.uploadJobId,
+          latencyMs: Number((performance.now() - startedAt).toFixed(2)),
+          status,
+          validRows: validDocs.length,
+          invalidRows: errors.length
+        },
+        "CSV worker completed"
+      );
+
+      return { status, validRows: validDocs.length, invalidRows: errors.length };
+    } catch (error) {
+      metricsService.increment("failedUploads");
+      await UploadJob.findByIdAndUpdate(data.uploadJobId, {
+        status: "FAILED",
+        failedAt: new Date(),
+        rowErrors: [
+          {
+            row: 0,
+            code: "CSV_PROCESSING_FAILED",
+            message: error instanceof Error ? error.message : "CSV processing failed"
+          }
+        ]
+      });
+
+      await activityService.record({
+        userId: data.userId,
+        portfolioId: data.portfolioId,
+        type: "CSV_UPLOAD_FAILED",
+        message: `${data.originalFileName} failed during processing`,
+        metadata: { uploadJobId: data.uploadJobId }
+      });
+
+      await emitProgress(data, {
+        status: "FAILED",
+        progress: 100,
+        error: error instanceof Error ? error.message : "CSV processing failed"
+      });
+
+      throw error;
+    }
+  },
+  {
+    connection: createRedisConnection("risklens-csv-worker"),
+    concurrency: 3
+  }
+);
+
+csvWorker.on("failed", (job, error) => {
+  logger.error(
+    {
+      queueJobId: job?.id,
+      uploadJobId: job?.data.uploadJobId,
+      requestId: job?.data.requestId,
+      error
+    },
+    "CSV worker job failed"
+  );
+});

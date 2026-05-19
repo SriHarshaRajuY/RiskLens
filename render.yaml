@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: risklens-api
+    runtime: node
+    rootDir: .
+    buildCommand: npm install --offline=false --no-audit --no-fund && npm run build --workspace server
+    startCommand: npm run start --workspace server
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: CLIENT_URL
+        sync: false
+      - key: SERVER_URL
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: ALPHA_VANTAGE_API_KEY
+        sync: false
+  - type: worker
+    name: risklens-workers
+    runtime: node
+    rootDir: .
+    buildCommand: npm install --offline=false --no-audit --no-fund && npm run build --workspace server
+    startCommand: npm run start:workers --workspace server
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ALPHA_VANTAGE_API_KEY
+        sync: false
