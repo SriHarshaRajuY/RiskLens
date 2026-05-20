@@ -22,8 +22,6 @@ const registerSchema = loginSchema.extend({
   name: z.string().min(2)
 });
 
-type LoginValues = z.infer<typeof loginSchema>;
-type RegisterValues = z.infer<typeof registerSchema>;
 type AuthValues = {
   name?: string;
   email: string;

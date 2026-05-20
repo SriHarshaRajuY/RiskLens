@@ -59,10 +59,14 @@ export default function PortfolioDetailPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Value" value={formatCurrency(summary?.totalPortfolioValue ?? 0)} />
-        <MetricCard title="Invested" value={formatCurrency(summary?.totalInvestedAmount ?? 0)} />
-        <MetricCard title="Realized" value={formatCurrency(summary?.realizedPnl ?? 0)} />
-        <MetricCard title="Unrealized" value={formatCurrency(summary?.unrealizedPnl ?? 0)} tone={(summary?.unrealizedPnl ?? 0) >= 0 ? "good" : "bad"} />
+        <MetricCard title="Value" value={summaryQuery.isLoading ? "Loading" : formatCurrency(summary?.totalPortfolioValue ?? 0)} />
+        <MetricCard title="Invested" value={summaryQuery.isLoading ? "Loading" : formatCurrency(summary?.totalInvestedAmount ?? 0)} />
+        <MetricCard title="Realized" value={summaryQuery.isLoading ? "Loading" : formatCurrency(summary?.realizedPnl ?? 0)} />
+        <MetricCard
+          title="Unrealized"
+          value={summaryQuery.isLoading ? "Loading" : formatCurrency(summary?.unrealizedPnl ?? 0)}
+          tone={(summary?.unrealizedPnl ?? 0) >= 0 ? "good" : "bad"}
+        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_360px]">

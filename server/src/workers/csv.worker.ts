@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { unlink } from "node:fs/promises";
 import { Worker } from "bullmq";
 import { z } from "zod";
 import { env } from "../config/env.js";
@@ -16,7 +15,7 @@ import { Trade } from "../modules/trades/trade.model.js";
 import { UploadJob } from "../modules/uploads/uploadJob.model.js";
 import { metricsService } from "../modules/metrics/metrics.service.js";
 import { invalidatePortfolioCache } from "../utils/cache.js";
-import { parseCsvFile } from "../utils/csvParser.js";
+import { parseCsv } from "../utils/csvParser.js";
 import { portfolioWriteLockKey, withDistributedLock } from "../utils/lock.js";
 
 const csvRowSchema = z.object({
@@ -104,10 +103,14 @@ export const csvWorker = new Worker<CsvProcessingJobData>(
       data.uploadJobId,
       { status: "PROCESSING", startedAt: new Date() },
       { new: true }
-    );
+    ).select("+csvContent");
 
     if (!uploadJob) {
       throw new Error(`Upload job ${data.uploadJobId} not found`);
+    }
+    const csvContent = (uploadJob as unknown as { csvContent?: string }).csvContent;
+    if (!csvContent) {
+      throw new Error(`Upload job ${data.uploadJobId} does not include CSV content`);
     }
 
     await emitProgress(data, { status: "PROCESSING", progress: 1 });
@@ -134,7 +137,11 @@ export const csvWorker = new Worker<CsvProcessingJobData>(
       const errors: CsvValidationError[] = [];
       const validCandidates: ValidatedCsvTrade[] = [];
 
-      const totalRows = await parseCsvFile(data.filePath, (rawRow, rowNumber) => {
+      const rows = await parseCsv(csvContent);
+      const totalRows = rows.length;
+
+      rows.forEach((rawRow, index) => {
+        const rowNumber = index + 2;
         const parsed = csvRowSchema.safeParse(rawRow);
 
         if (!parsed.success) {
@@ -258,14 +265,17 @@ export const csvWorker = new Worker<CsvProcessingJobData>(
       const completedAt = new Date();
 
       await UploadJob.findByIdAndUpdate(data.uploadJobId, {
-        status,
-        totalRows,
-        processedRows: totalRows,
-        validRows: insertable.length,
-        invalidRows: errors.length,
-        rowErrors: errors.slice(0, 250),
-        completedAt,
-        ...(status === "FAILED" ? { failedAt: completedAt } : {})
+        $set: {
+          status,
+          totalRows,
+          processedRows: totalRows,
+          validRows: insertable.length,
+          invalidRows: errors.length,
+          rowErrors: errors.slice(0, 250),
+          completedAt,
+          ...(status === "FAILED" ? { failedAt: completedAt } : {})
+        },
+        $unset: { csvContent: "" }
       });
 
       if (status === "FAILED") {
@@ -333,15 +343,18 @@ export const csvWorker = new Worker<CsvProcessingJobData>(
     } catch (error) {
       metricsService.increment("failedUploads");
       await UploadJob.findByIdAndUpdate(data.uploadJobId, {
-        status: "FAILED",
-        failedAt: new Date(),
-        rowErrors: [
-          {
-            row: 0,
-            code: "CSV_PROCESSING_FAILED",
-            message: error instanceof Error ? error.message : "CSV processing failed"
-          }
-        ]
+        $set: {
+          status: "FAILED",
+          failedAt: new Date(),
+          rowErrors: [
+            {
+              row: 0,
+              code: "CSV_PROCESSING_FAILED",
+              message: error instanceof Error ? error.message : "CSV processing failed"
+            }
+          ]
+        },
+        $unset: { csvContent: "" }
       });
 
       await activityService.record({
@@ -359,8 +372,6 @@ export const csvWorker = new Worker<CsvProcessingJobData>(
       });
 
       throw error;
-    } finally {
-      await unlink(data.filePath).catch(() => undefined);
     }
   },
   {

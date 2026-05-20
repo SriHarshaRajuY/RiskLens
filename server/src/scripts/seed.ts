@@ -25,7 +25,7 @@ async function main(): Promise<void> {
       name: "RiskLens Demo",
       email: demoEmail,
       passwordHash,
-      role: "USER"
+      role: "ADMIN"
     },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );

@@ -6,6 +6,10 @@ COPY server/package.json ./server/package.json
 RUN npm ci --no-audit --no-fund
 
 FROM deps AS build
+ARG NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
+ARG NEXT_PUBLIC_SOCKET_URL=http://localhost:5000
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_SOCKET_URL=$NEXT_PUBLIC_SOCKET_URL
 COPY client ./client
 RUN npm run build --workspace client
 

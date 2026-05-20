@@ -35,6 +35,16 @@ export function errorMiddleware(error: Error, req: Request, res: Response, _next
     return;
   }
 
+  if ((error as { code?: number }).code === 11000) {
+    res.status(409).json({
+      success: false,
+      code: "DUPLICATE_RESOURCE",
+      message: "A resource with the same unique value already exists",
+      requestId: req.requestId
+    });
+    return;
+  }
+
   if (error instanceof AppError) {
     res.status(error.statusCode).json({
       success: false,

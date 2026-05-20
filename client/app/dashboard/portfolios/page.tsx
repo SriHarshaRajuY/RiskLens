@@ -62,11 +62,13 @@ export default function PortfoliosPage() {
           <form className="space-y-4" onSubmit={form.handleSubmit((values) => createMutation.mutate(values))}>
             <div className="space-y-2">
               <Label>Name</Label>
-              <Input {...form.register("name")} placeholder="Tech Stocks Portfolio" />
+              <Input {...form.register("name")} placeholder="Tech Stocks Portfolio" aria-invalid={Boolean(form.formState.errors.name)} />
+              {form.formState.errors.name ? <p className="text-sm text-destructive">{form.formState.errors.name.message}</p> : null}
             </div>
             <div className="space-y-2">
               <Label>Description</Label>
-              <Textarea {...form.register("description")} placeholder="Long-term holdings and risk alerts" />
+              <Textarea {...form.register("description")} placeholder="Long-term holdings and risk alerts" aria-invalid={Boolean(form.formState.errors.description)} />
+              {form.formState.errors.description ? <p className="text-sm text-destructive">{form.formState.errors.description.message}</p> : null}
             </div>
             <div className="space-y-2">
               <Label>Currency</Label>
@@ -105,6 +107,10 @@ export default function PortfoliosPage() {
               </CardContent>
             </Card>
           ))}
+          {portfoliosQuery.isLoading ? <Card><CardContent className="p-6 text-sm text-muted-foreground">Loading portfolios...</CardContent></Card> : null}
+          {!portfoliosQuery.isLoading && (portfoliosQuery.data ?? []).length === 0 ? (
+            <Card><CardContent className="p-6 text-sm text-muted-foreground">Create your first portfolio to start tracking risk.</CardContent></Card>
+          ) : null}
         </div>
       </div>
     </div>

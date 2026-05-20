@@ -58,7 +58,8 @@ export function TradeForm({ portfolioId }: { portfolioId: string }) {
         <form className="grid gap-3 sm:grid-cols-2" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
           <div className="space-y-2">
             <Label>Symbol</Label>
-            <Input {...form.register("symbol")} />
+            <Input {...form.register("symbol")} aria-invalid={Boolean(form.formState.errors.symbol)} />
+            {form.formState.errors.symbol ? <p className="text-sm text-destructive">{form.formState.errors.symbol.message}</p> : null}
           </div>
           <div className="space-y-2">
             <Label>Side</Label>
@@ -69,19 +70,23 @@ export function TradeForm({ portfolioId }: { portfolioId: string }) {
           </div>
           <div className="space-y-2">
             <Label>Quantity</Label>
-            <Input type="number" step="0.0001" {...form.register("quantity")} />
+            <Input type="number" step="0.0001" {...form.register("quantity")} aria-invalid={Boolean(form.formState.errors.quantity)} />
+            {form.formState.errors.quantity ? <p className="text-sm text-destructive">{form.formState.errors.quantity.message}</p> : null}
           </div>
           <div className="space-y-2">
             <Label>Price</Label>
-            <Input type="number" step="0.01" {...form.register("price")} />
+            <Input type="number" step="0.01" {...form.register("price")} aria-invalid={Boolean(form.formState.errors.price)} />
+            {form.formState.errors.price ? <p className="text-sm text-destructive">{form.formState.errors.price.message}</p> : null}
           </div>
           <div className="space-y-2">
             <Label>Fees</Label>
-            <Input type="number" step="0.01" {...form.register("fees")} />
+            <Input type="number" step="0.01" {...form.register("fees")} aria-invalid={Boolean(form.formState.errors.fees)} />
+            {form.formState.errors.fees ? <p className="text-sm text-destructive">{form.formState.errors.fees.message}</p> : null}
           </div>
           <div className="space-y-2">
             <Label>Date</Label>
-            <Input type="date" {...form.register("tradeDate")} />
+            <Input type="date" {...form.register("tradeDate")} aria-invalid={Boolean(form.formState.errors.tradeDate)} />
+            {form.formState.errors.tradeDate ? <p className="text-sm text-destructive">{form.formState.errors.tradeDate.message}</p> : null}
           </div>
           <Button className="sm:col-span-2" disabled={mutation.isPending}>
             <Plus className="h-4 w-4" />

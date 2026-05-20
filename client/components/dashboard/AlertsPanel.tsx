@@ -2,7 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,9 +18,15 @@ type AlertValues = {
   threshold: number;
 };
 
+const alertSchema = z.object({
+  type: z.enum(["DAILY_LOSS", "MAX_DRAWDOWN", "CONCENTRATION", "VOLATILITY"]),
+  threshold: z.coerce.number().positive().max(100)
+});
+
 export function AlertsPanel({ portfolioId }: { portfolioId: string }) {
   const queryClient = useQueryClient();
   const form = useForm<AlertValues>({
+    resolver: zodResolver(alertSchema),
     defaultValues: {
       type: "CONCENTRATION",
       threshold: 40
@@ -59,7 +67,8 @@ export function AlertsPanel({ portfolioId }: { portfolioId: string }) {
           </div>
           <div className="space-y-2">
             <Label>Threshold %</Label>
-            <Input type="number" step="0.1" {...form.register("threshold", { valueAsNumber: true })} />
+            <Input type="number" step="0.1" {...form.register("threshold", { valueAsNumber: true })} aria-invalid={Boolean(form.formState.errors.threshold)} />
+            {form.formState.errors.threshold ? <p className="text-sm text-destructive">{form.formState.errors.threshold.message}</p> : null}
           </div>
           <Button className="self-end" disabled={createMutation.isPending}>Create</Button>
         </form>

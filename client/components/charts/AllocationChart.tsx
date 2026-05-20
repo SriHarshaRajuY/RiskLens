@@ -13,6 +13,11 @@ export function AllocationChart({ allocation }: { allocation: PortfolioSummary["
         <CardTitle>Allocation</CardTitle>
       </CardHeader>
       <CardContent>
+        {allocation.length === 0 ? (
+          <div className="flex h-44 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+            Allocation appears after open holdings exist.
+          </div>
+        ) : (
         <div className="grid gap-4 md:grid-cols-[180px_1fr]">
           <div className="h-44">
             <ResponsiveContainer width="100%" height="100%">
@@ -38,6 +43,7 @@ export function AllocationChart({ allocation }: { allocation: PortfolioSummary["
             ))}
           </div>
         </div>
+        )}
       </CardContent>
     </Card>
   );

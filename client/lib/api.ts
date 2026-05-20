@@ -84,7 +84,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   const method = options.method ?? "GET";
   const isForm = options.rawBody instanceof FormData;
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), options.timeoutMs ?? 20_000);
+  const timeout = globalThis.setTimeout(() => controller.abort(), options.timeoutMs ?? 20_000);
   const csrfToken = isUnsafeMethod(method) ? cookieValue(CSRF_COOKIE_NAME) : null;
 
   try {
@@ -119,7 +119,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     }
     throw error;
   } finally {
-    window.clearTimeout(timeout);
+    globalThis.clearTimeout(timeout);
   }
 }
 

@@ -9,13 +9,13 @@
     "server"
   ],
   "scripts": {
-    "dev": "node scripts/run-workspace-script.mjs dev server",
+    "dev": "node scripts/dev-all.mjs",
     "dev:server": "node scripts/run-workspace-script.mjs dev server",
     "dev:workers": "node scripts/run-workspace-script.mjs dev:workers server",
     "dev:client": "node scripts/run-workspace-script.mjs dev client",
-    "build": "node scripts/run-workspace-script.mjs build server client",
+    "build": "node scripts/build-all.mjs",
     "test": "node scripts/run-workspace-script.mjs test server",
-    "lint": "node scripts/run-workspace-script.mjs lint client server",
+    "lint": "node scripts/lint-all.mjs",
     "seed": "node scripts/run-workspace-script.mjs seed server",
     "benchmark:summary": "node scripts/run-workspace-script.mjs benchmark:summary server"
   },

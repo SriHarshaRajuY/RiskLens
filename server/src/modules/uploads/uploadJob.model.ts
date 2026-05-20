@@ -27,6 +27,10 @@ const uploadJobSchema = new Schema(
       type: String,
       index: true
     },
+    csvContent: {
+      type: String,
+      select: false
+    },
     status: {
       type: String,
       enum: ["QUEUED", "PROCESSING", "COMPLETED", "FAILED", "PARTIAL_FAILURE"],

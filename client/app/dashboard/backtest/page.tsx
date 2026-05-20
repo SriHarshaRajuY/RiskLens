@@ -83,7 +83,8 @@ export default function BacktestPage() {
             <form className="space-y-4" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
               <div className="space-y-2">
                 <Label>Symbol</Label>
-                <Input {...form.register("symbol")} />
+                <Input {...form.register("symbol")} aria-invalid={Boolean(form.formState.errors.symbol)} />
+                {form.formState.errors.symbol ? <p className="text-sm text-destructive">{form.formState.errors.symbol.message}</p> : null}
               </div>
               <div className="space-y-2">
                 <Label>Strategy</Label>
@@ -95,26 +96,31 @@ export default function BacktestPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Start</Label>
-                  <Input type="date" {...form.register("startDate")} />
+                  <Input type="date" {...form.register("startDate")} aria-invalid={Boolean(form.formState.errors.startDate)} />
+                  {form.formState.errors.startDate ? <p className="text-sm text-destructive">{form.formState.errors.startDate.message}</p> : null}
                 </div>
                 <div className="space-y-2">
                   <Label>End</Label>
-                  <Input type="date" {...form.register("endDate")} />
+                  <Input type="date" {...form.register("endDate")} aria-invalid={Boolean(form.formState.errors.endDate)} />
+                  {form.formState.errors.endDate ? <p className="text-sm text-destructive">{form.formState.errors.endDate.message}</p> : null}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Short</Label>
-                  <Input type="number" {...form.register("shortWindow")} />
+                  <Input type="number" {...form.register("shortWindow")} aria-invalid={Boolean(form.formState.errors.shortWindow)} />
+                  {form.formState.errors.shortWindow ? <p className="text-sm text-destructive">{form.formState.errors.shortWindow.message}</p> : null}
                 </div>
                 <div className="space-y-2">
                   <Label>Long</Label>
-                  <Input type="number" {...form.register("longWindow")} />
+                  <Input type="number" {...form.register("longWindow")} aria-invalid={Boolean(form.formState.errors.longWindow)} />
+                  {form.formState.errors.longWindow ? <p className="text-sm text-destructive">{form.formState.errors.longWindow.message}</p> : null}
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Capital</Label>
-                <Input type="number" {...form.register("initialCapital")} />
+                <Input type="number" {...form.register("initialCapital")} aria-invalid={Boolean(form.formState.errors.initialCapital)} />
+                {form.formState.errors.initialCapital ? <p className="text-sm text-destructive">{form.formState.errors.initialCapital.message}</p> : null}
               </div>
               <Button disabled={mutation.isPending}>
                 <Play className="h-4 w-4" />

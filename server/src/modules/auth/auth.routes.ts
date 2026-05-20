@@ -11,5 +11,5 @@ export const authRoutes = Router();
 authRoutes.post("/register", authRateLimiter, validateBody(registerSchema), asyncHandler(authController.register));
 authRoutes.post("/login", authRateLimiter, validateBody(loginSchema), asyncHandler(authController.login));
 authRoutes.post("/refresh", authRateLimiter, asyncHandler(authController.refresh));
-authRoutes.post("/logout", requireAuth, asyncHandler(authController.logout));
+authRoutes.post("/logout", asyncHandler(authController.logout));
 authRoutes.get("/me", requireAuth, asyncHandler(authController.me));
