@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, getApiErrorMessage } from "@/lib/api";
 import type { Notification } from "@/types/notification";
 
 export default function NotificationsPage() {
@@ -23,6 +23,9 @@ export default function NotificationsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
       toast.success("Notification marked read");
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, "Could not update notification"));
     }
   });
 
@@ -37,6 +40,17 @@ export default function NotificationsPage() {
           <CardTitle>Inbox</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          {notificationsQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading notifications...</p> : null}
+          {notificationsQuery.isError ? (
+            <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+              Notifications could not be loaded. Please retry from the sidebar.
+            </div>
+          ) : null}
+          {!notificationsQuery.isLoading && !notificationsQuery.isError && (notificationsQuery.data ?? []).length === 0 ? (
+            <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+              No notifications yet. Risk alerts and CSV imports will appear here when they run.
+            </div>
+          ) : null}
           {(notificationsQuery.data ?? []).map((item) => (
             <div key={item._id} className="flex flex-col gap-3 rounded-md border p-4 md:flex-row md:items-center md:justify-between">
               <div>

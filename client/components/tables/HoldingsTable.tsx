@@ -11,36 +11,44 @@ export function HoldingsTable({ holdings }: { holdings: Holding[] }) {
         <CardTitle>Holdings</CardTitle>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Symbol</TableHead>
-              <TableHead className="text-right">Qty</TableHead>
-              <TableHead className="text-right">Avg cost</TableHead>
-              <TableHead className="text-right">Price</TableHead>
-              <TableHead className="text-right">Value</TableHead>
-              <TableHead className="text-right">P&L</TableHead>
-              <TableHead className="text-right">Alloc</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {holdings.map((holding) => (
-              <TableRow key={holding.symbol}>
-                <TableCell>
-                  <Badge variant="secondary">{holding.symbol}</Badge>
-                </TableCell>
-                <TableCell className="text-right">{holding.quantity}</TableCell>
-                <TableCell className="text-right">{formatCurrency(holding.averageBuyPrice)}</TableCell>
-                <TableCell className="text-right">{formatCurrency(holding.currentPrice)}</TableCell>
-                <TableCell className="text-right">{formatCurrency(holding.marketValue)}</TableCell>
-                <TableCell className={holding.totalPnl >= 0 ? "text-right text-emerald-700" : "text-right text-red-700"}>
-                  {formatCurrency(holding.totalPnl)}
-                </TableCell>
-                <TableCell className="text-right">{holding.allocationPercent.toFixed(1)}%</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        {holdings.length === 0 ? (
+          <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+            Add trades or upload a CSV to generate holdings.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Symbol</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead className="text-right">Avg cost</TableHead>
+                  <TableHead className="text-right">Price</TableHead>
+                  <TableHead className="text-right">Value</TableHead>
+                  <TableHead className="text-right">P&L</TableHead>
+                  <TableHead className="text-right">Alloc</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {holdings.map((holding) => (
+                  <TableRow key={holding.symbol}>
+                    <TableCell>
+                      <Badge variant="secondary">{holding.symbol}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">{holding.quantity}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(holding.averageBuyPrice)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(holding.currentPrice)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(holding.marketValue)}</TableCell>
+                    <TableCell className={holding.totalPnl >= 0 ? "text-right text-emerald-700" : "text-right text-red-700"}>
+                      {formatCurrency(holding.totalPnl)}
+                    </TableCell>
+                    <TableCell className="text-right">{holding.allocationPercent.toFixed(1)}%</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

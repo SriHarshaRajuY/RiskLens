@@ -15,7 +15,7 @@ export function ActivityFeed({ items }: { items: ActivityLog[] }) {
             <div key={item._id} className="border-l-2 border-primary/30 pl-3">
               <p className="text-sm font-medium">{item.message}</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {item.type.replaceAll("_", " ")} · {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+                {item.type.replaceAll("_", " ")} - {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
               </p>
             </div>
           ))}

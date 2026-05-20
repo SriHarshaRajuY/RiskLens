@@ -13,18 +13,30 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiRequest, jsonBody } from "@/lib/api";
+import { apiRequest, getApiErrorMessage, jsonBody } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import type { BacktestResult } from "@/types/backtest";
 
 const schema = z.object({
-  symbol: z.string().min(1).max(12),
+  symbol: z
+    .string()
+    .trim()
+    .min(1, "Symbol is required")
+    .max(12, "Symbol must be 12 characters or fewer")
+    .regex(/^[A-Za-z][A-Za-z0-9.-]*$/, "Use a valid market symbol, for example AAPL")
+    .transform((value) => value.toUpperCase()),
   strategy: z.enum(["BUY_AND_HOLD", "MOVING_AVERAGE_CROSSOVER"]),
-  startDate: z.string().min(1),
-  endDate: z.string().min(1),
-  shortWindow: z.coerce.number().int().positive(),
-  longWindow: z.coerce.number().int().positive(),
-  initialCapital: z.coerce.number().positive()
+  startDate: z.string().min(1, "Start date is required"),
+  endDate: z.string().min(1, "End date is required"),
+  shortWindow: z.coerce.number().int().positive("Short window must be positive"),
+  longWindow: z.coerce.number().int().positive("Long window must be positive"),
+  initialCapital: z.coerce.number().positive("Initial capital must be greater than zero")
+}).refine((input) => new Date(input.endDate) > new Date(input.startDate), {
+  path: ["endDate"],
+  message: "End date must be after start date"
+}).refine((input) => input.longWindow > input.shortWindow, {
+  path: ["longWindow"],
+  message: "Long window must be greater than short window"
 });
 
 type Values = z.infer<typeof schema>;
@@ -61,7 +73,7 @@ export default function BacktestPage() {
       setLatest(result);
       toast.success("Backtest completed");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Backtest failed")
+    onError: (error) => toast.error(getApiErrorMessage(error, "Backtest failed"))
   });
 
   const active = latest ?? resultsQuery.data?.[0];
@@ -122,21 +134,32 @@ export default function BacktestPage() {
                 <Input type="number" {...form.register("initialCapital")} aria-invalid={Boolean(form.formState.errors.initialCapital)} />
                 {form.formState.errors.initialCapital ? <p className="text-sm text-destructive">{form.formState.errors.initialCapital.message}</p> : null}
               </div>
-              <Button disabled={mutation.isPending}>
+              <Button type="submit" disabled={mutation.isPending}>
                 <Play className="h-4 w-4" />
-                Run
+                Run backtest
               </Button>
             </form>
           </CardContent>
         </Card>
         <div className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-4">
-            <MetricCard title="Final capital" value={formatCurrency(active?.finalCapital ?? 0)} />
-            <MetricCard title="Return" value={`${(active?.totalReturn ?? 0).toFixed(2)}%`} tone={(active?.totalReturn ?? 0) >= 0 ? "good" : "bad"} />
-            <MetricCard title="Drawdown" value={`${(active?.maxDrawdown ?? 0).toFixed(2)}%`} tone="warn" />
-            <MetricCard title="Trades" value={String(active?.numberOfTrades ?? 0)} />
-          </div>
-          <BacktestResultChart result={active} />
+          {active ? (
+            <>
+              <div className="grid gap-4 md:grid-cols-4">
+                <MetricCard title="Final capital" value={formatCurrency(active.finalCapital)} />
+                <MetricCard title="Return" value={`${active.totalReturn.toFixed(2)}%`} tone={active.totalReturn >= 0 ? "good" : "bad"} />
+                <MetricCard title="Drawdown" value={`${active.maxDrawdown.toFixed(2)}%`} tone="warn" />
+                <MetricCard title="Trades" value={String(active.numberOfTrades)} />
+              </div>
+              <BacktestResultChart result={active} />
+            </>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>No backtests yet</CardTitle>
+                <CardDescription>Run a strategy to generate return, drawdown, trade count, and equity curve results.</CardDescription>
+              </CardHeader>
+            </Card>
+          )}
         </div>
       </div>
     </div>

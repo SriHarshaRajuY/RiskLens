@@ -12,12 +12,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { apiRequest, jsonBody } from "@/lib/api";
+import { apiRequest, getApiErrorMessage, jsonBody } from "@/lib/api";
 import type { Portfolio } from "@/types/portfolio";
 
 const schema = z.object({
-  name: z.string().min(2),
-  description: z.string().optional(),
+  name: z.string().trim().min(2, "Portfolio name must be at least 2 characters").max(100, "Portfolio name must be under 100 characters"),
+  description: z.string().trim().max(500, "Description must be under 500 characters").optional(),
   baseCurrency: z.enum(["USD", "INR"])
 });
 
@@ -48,7 +48,7 @@ export default function PortfoliosPage() {
       queryClient.invalidateQueries({ queryKey: ["portfolios"] });
       toast.success("Portfolio created");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Could not create portfolio")
+    onError: (error) => toast.error(getApiErrorMessage(error, "Could not create portfolio"))
   });
 
   return (
@@ -56,18 +56,18 @@ export default function PortfoliosPage() {
       <Card>
         <CardHeader>
           <CardTitle>Create portfolio</CardTitle>
-          <CardDescription>Each portfolio has isolated trades, alerts, snapshots, and analytics cache keys.</CardDescription>
+          <CardDescription>Create a workspace for trades, holdings, alerts, and analytics.</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={form.handleSubmit((values) => createMutation.mutate(values))}>
             <div className="space-y-2">
               <Label>Name</Label>
-              <Input {...form.register("name")} placeholder="Tech Stocks Portfolio" aria-invalid={Boolean(form.formState.errors.name)} />
+              <Input {...form.register("name")} placeholder="Long-Term Portfolio" aria-invalid={Boolean(form.formState.errors.name)} />
               {form.formState.errors.name ? <p className="text-sm text-destructive">{form.formState.errors.name.message}</p> : null}
             </div>
             <div className="space-y-2">
               <Label>Description</Label>
-              <Textarea {...form.register("description")} placeholder="Long-term holdings and risk alerts" aria-invalid={Boolean(form.formState.errors.description)} />
+              <Textarea {...form.register("description")} placeholder="Core holdings, CSV imports, and risk alerts" aria-invalid={Boolean(form.formState.errors.description)} />
               {form.formState.errors.description ? <p className="text-sm text-destructive">{form.formState.errors.description.message}</p> : null}
             </div>
             <div className="space-y-2">
@@ -79,7 +79,7 @@ export default function PortfoliosPage() {
             </div>
             <Button type="submit" disabled={createMutation.isPending}>
               <Plus className="h-4 w-4" />
-              Create
+              Create portfolio
             </Button>
           </form>
         </CardContent>
@@ -87,7 +87,7 @@ export default function PortfoliosPage() {
       <div className="space-y-4">
         <div>
           <h1 className="text-3xl font-semibold">Portfolios</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Workspace-level portfolio entities and ownership boundaries.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Manage portfolios and open detailed analytics workspaces.</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {(portfoliosQuery.data ?? []).map((portfolio) => (

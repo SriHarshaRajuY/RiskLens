@@ -13,12 +13,18 @@ export function notFoundMiddleware(req: Request, res: Response): void {
   });
 }
 
+function firstValidationMessage(error: ZodError): string {
+  const flattened = error.flatten();
+  const fieldError = Object.values(flattened.fieldErrors).find((messages) => messages?.[0])?.[0];
+  return fieldError ?? flattened.formErrors[0] ?? "Request validation failed";
+}
+
 export function errorMiddleware(error: Error, req: Request, res: Response, _next: NextFunction): void {
   if (error instanceof ZodError) {
     res.status(400).json({
       success: false,
       code: "VALIDATION_ERROR",
-      message: "Request validation failed",
+      message: firstValidationMessage(error),
       details: error.flatten(),
       requestId: req.requestId
     });

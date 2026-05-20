@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiRequest, jsonBody } from "@/lib/api";
+import { apiRequest, getApiErrorMessage, jsonBody } from "@/lib/api";
 import type { RiskAlert } from "@/types/alert";
 
 type AlertValues = {
@@ -20,7 +20,7 @@ type AlertValues = {
 
 const alertSchema = z.object({
   type: z.enum(["DAILY_LOSS", "MAX_DRAWDOWN", "CONCENTRATION", "VOLATILITY"]),
-  threshold: z.coerce.number().positive().max(100)
+  threshold: z.coerce.number().positive("Threshold must be greater than zero").max(100, "Threshold cannot exceed 100")
 });
 
 export function AlertsPanel({ portfolioId }: { portfolioId: string }) {
@@ -46,7 +46,7 @@ export function AlertsPanel({ portfolioId }: { portfolioId: string }) {
       queryClient.invalidateQueries({ queryKey: ["alerts", portfolioId] });
       toast.success("Alert created");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Could not create alert")
+    onError: (error) => toast.error(getApiErrorMessage(error, "Could not create alert"))
   });
 
   return (
@@ -70,9 +70,17 @@ export function AlertsPanel({ portfolioId }: { portfolioId: string }) {
             <Input type="number" step="0.1" {...form.register("threshold", { valueAsNumber: true })} aria-invalid={Boolean(form.formState.errors.threshold)} />
             {form.formState.errors.threshold ? <p className="text-sm text-destructive">{form.formState.errors.threshold.message}</p> : null}
           </div>
-          <Button className="self-end" disabled={createMutation.isPending}>Create</Button>
+          <Button type="submit" className="self-end" disabled={createMutation.isPending}>
+            Create alert
+          </Button>
         </form>
         <div className="space-y-3">
+          {alertsQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading alerts...</p> : null}
+          {!alertsQuery.isLoading && (alertsQuery.data ?? []).length === 0 ? (
+            <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+              No alerts configured for this portfolio.
+            </div>
+          ) : null}
           {(alertsQuery.data ?? []).map((alert) => (
             <div key={alert._id} className="flex items-center justify-between rounded-md border p-3">
               <div>

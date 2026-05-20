@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, getApiErrorMessage } from "@/lib/api";
 import { useUploadProgress } from "@/hooks/useUploadProgress";
 
 export function TradeUploadBox({ portfolioId }: { portfolioId: string }) {
@@ -27,7 +27,7 @@ export function TradeUploadBox({ portfolioId }: { portfolioId: string }) {
       toast.success("CSV upload queued");
       queryClient.invalidateQueries({ queryKey: ["uploads"] });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Upload failed")
+    onError: (error) => toast.error(getApiErrorMessage(error, "Upload failed"))
   });
 
   return (

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Bell, BriefcaseBusiness } from "lucide-react";
+import { ArrowRight, Bell } from "lucide-react";
 import { ActivityFeed } from "@/components/activity/ActivityFeed";
 import { AllocationChart } from "@/components/charts/AllocationChart";
 import { PerformanceChart } from "@/components/charts/PerformanceChart";
@@ -144,7 +144,7 @@ export default function DashboardPage() {
             <Button asChild variant="outline" size="sm">
               <Link href="/dashboard/notifications">
                 View all
-                <BriefcaseBusiness className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
           </CardContent>

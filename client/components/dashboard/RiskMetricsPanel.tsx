@@ -2,12 +2,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { RiskMetrics } from "@/types/analytics";
 
 export function RiskMetricsPanel({ risk }: { risk?: RiskMetrics }) {
+  if (!risk) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Risk metrics</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+            Risk metrics will appear after trades and snapshots are available.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const metrics = [
-    ["Volatility", `${((risk?.annualizedVolatility ?? 0) * 100).toFixed(2)}%`],
-    ["Sharpe", (risk?.sharpeRatio ?? 0).toFixed(2)],
-    ["Max drawdown", `${((risk?.maxDrawdown ?? 0) * 100).toFixed(2)}%`],
-    ["VaR 95", `${((risk?.valueAtRisk95 ?? 0) * 100).toFixed(2)}%`],
-    ["Concentration", `${((risk?.concentrationRisk ?? 0) * 100).toFixed(2)}%`]
+    ["Volatility", `${(risk.annualizedVolatility * 100).toFixed(2)}%`],
+    ["Sharpe", risk.sharpeRatio.toFixed(2)],
+    ["Max drawdown", `${(risk.maxDrawdown * 100).toFixed(2)}%`],
+    ["VaR 95", `${(risk.valueAtRisk95 * 100).toFixed(2)}%`],
+    ["Concentration", `${(risk.concentrationRisk * 100).toFixed(2)}%`]
   ];
 
   return (

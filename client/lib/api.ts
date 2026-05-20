@@ -27,6 +27,56 @@ export class ApiError extends Error {
   }
 }
 
+type ValidationDetails = {
+  fieldErrors?: Record<string, string[] | undefined>;
+  formErrors?: string[];
+  issues?: Array<{ path?: Array<string | number>; message?: string }>;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function humanizeFieldName(field: string): string {
+  return field
+    .replace(/([A-Z])/g, " $1")
+    .replace(/[_-]+/g, " ")
+    .replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function validationDetailMessage(details: unknown): string | null {
+  if (!isRecord(details)) return null;
+
+  const validation = details as ValidationDetails;
+  const fieldErrors = validation.fieldErrors;
+  if (fieldErrors) {
+    for (const [field, messages] of Object.entries(fieldErrors)) {
+      const message = messages?.[0];
+      if (message) return `${humanizeFieldName(field)}: ${message}`;
+    }
+  }
+
+  const formError = validation.formErrors?.[0];
+  if (formError) return formError;
+
+  const issue = validation.issues?.find((item) => item.message);
+  if (issue?.message) {
+    const field = issue.path?.join(".");
+    return field ? `${humanizeFieldName(field)}: ${issue.message}` : issue.message;
+  }
+
+  return null;
+}
+
+export function getApiErrorMessage(error: unknown, fallback = "Request failed"): string {
+  if (error instanceof ApiError) {
+    return validationDetailMessage(error.details) ?? error.message ?? fallback;
+  }
+
+  if (error instanceof Error) return error.message;
+  return fallback;
+}
+
 function cookieValue(name: string): string | null {
   if (typeof document === "undefined") return null;
   const value = document.cookie
@@ -83,6 +133,7 @@ async function parsePayload<T>(response: Response): Promise<ApiResponse<T> & { d
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const method = options.method ?? "GET";
   const isForm = options.rawBody instanceof FormData;
+  const hasJsonBody = !isForm && Boolean(options.body);
   const controller = new AbortController();
   const timeout = globalThis.setTimeout(() => controller.abort(), options.timeoutMs ?? 20_000);
   const csrfToken = isUnsafeMethod(method) ? cookieValue(CSRF_COOKIE_NAME) : null;
@@ -94,7 +145,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
       signal: options.signal ?? controller.signal,
       body: options.rawBody ?? options.body,
       headers: {
-        ...(isForm ? {} : { "content-type": "application/json" }),
+        ...(hasJsonBody ? { "content-type": "application/json" } : {}),
         "x-request-id": requestId(),
         ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
         ...(options.headers ?? {})

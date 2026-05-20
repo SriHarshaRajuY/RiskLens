@@ -15,6 +15,19 @@ export default function AlertsPage() {
   });
   const portfolio = portfoliosQuery.data?.[0];
 
+  if (portfoliosQuery.isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Loading alerts</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Checking your portfolios...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!portfolio) {
     return (
       <Card>

@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft } from "lucide-react";
 import { ActivityFeed } from "@/components/activity/ActivityFeed";
 import { PerformanceChart } from "@/components/charts/PerformanceChart";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
@@ -11,6 +13,7 @@ import { RiskScoreCard } from "@/components/dashboard/RiskScoreCard";
 import { TradeForm } from "@/components/forms/TradeForm";
 import { TradeUploadBox } from "@/components/forms/TradeUploadBox";
 import { HoldingsTable } from "@/components/tables/HoldingsTable";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePortfolioSummary } from "@/hooks/usePortfolioSummary";
@@ -53,9 +56,17 @@ export default function PortfolioDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-sm text-muted-foreground">Portfolio detail</p>
-        <h1 className="text-3xl font-semibold">{portfolioQuery.data?.name ?? "Portfolio"}</h1>
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-sm text-muted-foreground">Portfolio detail</p>
+          <h1 className="text-3xl font-semibold">{portfolioQuery.data?.name ?? "Portfolio"}</h1>
+        </div>
+        <Button asChild variant="outline">
+          <Link href="/dashboard/portfolios">
+            <ArrowLeft className="h-4 w-4" />
+            Portfolios
+          </Link>
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -92,28 +103,38 @@ export default function PortfolioDetailPage() {
             <CardTitle>Recent trades</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Symbol</TableHead>
-                  <TableHead>Side</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(tradesQuery.data ?? []).map((trade) => (
-                  <TableRow key={trade._id}>
-                    <TableCell>{new Date(trade.tradeDate).toISOString().slice(0, 10)}</TableCell>
-                    <TableCell>{trade.symbol}</TableCell>
-                    <TableCell>{trade.side}</TableCell>
-                    <TableCell className="text-right">{trade.quantity}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(trade.price)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {tradesQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading trades...</p> : null}
+            {!tradesQuery.isLoading && (tradesQuery.data ?? []).length === 0 ? (
+              <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                No trades recorded yet.
+              </div>
+            ) : null}
+            {(tradesQuery.data ?? []).length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Symbol</TableHead>
+                      <TableHead>Side</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                      <TableHead className="text-right">Price</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(tradesQuery.data ?? []).map((trade) => (
+                      <TableRow key={trade._id}>
+                        <TableCell>{new Date(trade.tradeDate).toISOString().slice(0, 10)}</TableCell>
+                        <TableCell>{trade.symbol}</TableCell>
+                        <TableCell>{trade.side}</TableCell>
+                        <TableCell className="text-right">{trade.quantity}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(trade.price)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
         <ActivityFeed items={activityQuery.data ?? []} />
