@@ -1,0 +1,11 @@
+process.env.NODE_ENV ??= "test";
+process.env.MONGODB_URI ??= "mongodb://127.0.0.1:27017/risklens-test";
+process.env.REDIS_URL ??= "redis://127.0.0.1:6379";
+process.env.JWT_SECRET ??= "test_jwt_secret_at_least_10_chars";
+process.env.JWT_EXPIRES_IN ??= "15m";
+process.env.JWT_ISSUER ??= "risklens-api-test";
+process.env.JWT_AUDIENCE ??= "risklens-web-test";
+process.env.CLIENT_URL ??= "http://localhost:3000";
+process.env.SERVER_URL ??= "http://localhost:5000";
+process.env.MARKET_DATA_PROVIDER ??= "demo";
+process.env.MARKET_DATA_FALLBACK ??= "demo";
