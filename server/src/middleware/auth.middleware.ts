@@ -4,12 +4,13 @@ import { logger } from "../config/logger.js";
 import { authService } from "../modules/auth/auth.service.js";
 import { User } from "../modules/auth/user.model.js";
 import { metricsService } from "../modules/metrics/metrics.service.js";
-import { unauthorized } from "../utils/errors.js";
+import { ACCESS_TOKEN_COOKIE, cookieValue } from "../utils/cookies.js";
+import { forbidden, unauthorized } from "../utils/errors.js";
 
 export async function requireAuth(req: Request, _res: Response, next: NextFunction): Promise<void> {
   try {
     const header = req.header("authorization");
-    const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length) : undefined;
+    const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length) : cookieValue(req, ACCESS_TOKEN_COOKIE);
 
     if (!token) throw unauthorized();
 
@@ -41,7 +42,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
 
 export function requireAdmin(req: Request, _res: Response, next: NextFunction): void {
   if (req.user?.role !== "ADMIN") {
-    next(unauthorized("Admin access required"));
+    next(forbidden("Admin access required"));
     return;
   }
   next();

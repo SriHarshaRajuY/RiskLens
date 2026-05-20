@@ -11,6 +11,8 @@ type CacheOptions = {
   requestId?: string;
 };
 
+const inFlightComputations = new Map<string, Promise<unknown>>();
+
 export async function getCache<T>(key: string, requestId?: string): Promise<T | null> {
   const redis = getRedis();
   const raw = await redis.get(key);
@@ -20,7 +22,13 @@ export async function getCache<T>(key: string, requestId?: string): Promise<T | 
   logger.info({ requestId, cacheKey: key, hit }, "Cache lookup");
 
   if (!raw) return null;
-  return JSON.parse(raw) as T;
+  try {
+    return JSON.parse(raw) as T;
+  } catch (error) {
+    logger.warn({ requestId, cacheKey: key, error }, "Cache payload was malformed and will be evicted");
+    await redis.del(key).catch(() => undefined);
+    return null;
+  }
 }
 
 export async function setCache<T>(key: string, value: T, options?: CacheOptions): Promise<void> {
@@ -55,9 +63,20 @@ export async function withCache<T>(key: string, compute: () => Promise<T>, optio
     return cached;
   }
 
-  const value = await compute();
-  await setCache(key, value, options);
-  return value;
+  const existing = inFlightComputations.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
+
+  const promise = compute()
+    .then(async (value) => {
+      await setCache(key, value, options);
+      return value;
+    })
+    .finally(() => {
+      inFlightComputations.delete(key);
+    });
+
+  inFlightComputations.set(key, promise);
+  return promise;
 }
 
 export async function deleteByPattern(pattern: string, requestId?: string): Promise<number> {

@@ -40,7 +40,9 @@ async function fetchAlphaVantageDaily(symbol: string): Promise<PricePoint[]> {
   url.searchParams.set("outputsize", "full");
   url.searchParams.set("apikey", env.ALPHA_VANTAGE_API_KEY);
 
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(6000)
+  });
   if (!response.ok) {
     throw new Error(`Alpha Vantage request failed with ${response.status}`);
   }
@@ -103,9 +105,12 @@ export const marketDataService = {
 
   async getLatestPrices(symbols: string[], requestId?: string): Promise<Record<string, number>> {
     const unique = [...new Set(symbols.map((symbol) => symbol.toUpperCase()))];
-    const entries = await Promise.all(
-      unique.map(async (symbol) => [symbol, await this.getLatestPrice(symbol, requestId)] as const)
-    );
+    const entries: Array<readonly [string, number]> = [];
+
+    for (const symbol of unique) {
+      entries.push([symbol, await this.getLatestPrice(symbol, requestId)] as const);
+    }
+
     return Object.fromEntries(entries);
   }
 };

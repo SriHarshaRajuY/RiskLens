@@ -1,4 +1,4 @@
-import { parseString } from "@fast-csv/parse";
+import { parseFile, parseString } from "@fast-csv/parse";
 
 export type CsvRow = Record<string, string>;
 
@@ -15,6 +15,31 @@ export async function parseCsv(csvContent: string): Promise<CsvRow[]> {
       .on("error", reject)
       .on("data", (row: CsvRow) => rows.push(normalizeRow(row)))
       .on("end", () => resolve(rows));
+  });
+}
+
+export async function parseCsvFile(filePath: string, onRow: (row: CsvRow, rowNumber: number) => Promise<void> | void): Promise<number> {
+  return new Promise((resolve, reject) => {
+    let rowCount = 0;
+    const parser = parseFile(filePath, {
+      headers: true,
+      ignoreEmpty: true,
+      trim: true,
+      renameHeaders: false
+    });
+
+    parser.on("error", reject);
+    parser.on("data", (row: CsvRow) => {
+      parser.pause();
+      rowCount += 1;
+      Promise.resolve(onRow(normalizeRow(row), rowCount + 1))
+        .then(() => parser.resume())
+        .catch((error) => {
+          parser.destroy(error);
+          reject(error);
+        });
+    });
+    parser.on("end", () => resolve(rowCount));
   });
 }
 

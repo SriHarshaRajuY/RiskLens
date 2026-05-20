@@ -25,7 +25,7 @@ export type Holding = {
   allocationPercent: number;
 };
 
-type InternalHolding = {
+export type InternalHolding = {
   symbol: string;
   quantity: number;
   averageBuyPrice: number;
@@ -33,51 +33,51 @@ type InternalHolding = {
   feesPaid: number;
 };
 
+export function applyTradeToState(state: Map<string, InternalHolding>, trade: TradeLedgerEntry): void {
+  const symbol = trade.symbol.toUpperCase();
+  const fees = trade.fees ?? 0;
+  const existing = state.get(symbol) ?? {
+    symbol,
+    quantity: 0,
+    averageBuyPrice: 0,
+    realizedPnl: 0,
+    feesPaid: 0
+  };
+
+  if (trade.side === "BUY") {
+    const currentCost = existing.quantity * existing.averageBuyPrice;
+    const addedCost = trade.quantity * trade.price + fees;
+    const newQuantity = existing.quantity + trade.quantity;
+    existing.averageBuyPrice = newQuantity === 0 ? 0 : (currentCost + addedCost) / newQuantity;
+    existing.quantity = newQuantity;
+    existing.feesPaid += fees;
+  } else {
+    if (trade.quantity > existing.quantity + 1e-8) {
+      throw badRequest("TRADE_OVERSELLS_POSITION", `Sell quantity exceeds available ${symbol} holdings`, {
+        symbol,
+        sellQuantity: trade.quantity,
+        availableQuantity: existing.quantity
+      });
+    }
+
+    existing.realizedPnl += trade.quantity * (trade.price - existing.averageBuyPrice) - fees;
+    existing.quantity -= trade.quantity;
+    existing.feesPaid += fees;
+    if (existing.quantity <= 1e-8) {
+      existing.quantity = 0;
+      existing.averageBuyPrice = 0;
+    }
+  }
+
+  state.set(symbol, existing);
+}
+
 export function replayTrades(trades: TradeLedgerEntry[]): InternalHolding[] {
   const state = new Map<string, InternalHolding>();
   const sorted = [...trades].sort((a, b) => a.tradeDate.getTime() - b.tradeDate.getTime());
 
   for (const trade of sorted) {
-    const symbol = trade.symbol.toUpperCase();
-    const fees = trade.fees ?? 0;
-    const existing = state.get(symbol) ?? {
-      symbol,
-      quantity: 0,
-      averageBuyPrice: 0,
-      realizedPnl: 0,
-      feesPaid: 0
-    };
-
-    if (trade.side === "BUY") {
-      const currentCost = existing.quantity * existing.averageBuyPrice;
-      const addedCost = trade.quantity * trade.price + fees;
-      const newQuantity = existing.quantity + trade.quantity;
-      existing.averageBuyPrice = newQuantity === 0 ? 0 : (currentCost + addedCost) / newQuantity;
-      existing.quantity = newQuantity;
-      existing.feesPaid += fees;
-    } else {
-      if (trade.quantity > existing.quantity + 1e-8) {
-        throw badRequest(
-          "TRADE_OVERSELLS_POSITION",
-          `Sell quantity exceeds available ${symbol} holdings`,
-          {
-            symbol,
-            sellQuantity: trade.quantity,
-            availableQuantity: existing.quantity
-          }
-        );
-      }
-
-      existing.realizedPnl += trade.quantity * (trade.price - existing.averageBuyPrice) - fees;
-      existing.quantity -= trade.quantity;
-      existing.feesPaid += fees;
-      if (existing.quantity <= 1e-8) {
-        existing.quantity = 0;
-        existing.averageBuyPrice = 0;
-      }
-    }
-
-    state.set(symbol, existing);
+    applyTradeToState(state, trade);
   }
 
   return [...state.values()];

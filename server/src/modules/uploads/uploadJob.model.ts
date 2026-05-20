@@ -19,6 +19,14 @@ const uploadJobSchema = new Schema(
       required: true,
       trim: true
     },
+    fileSize: {
+      type: Number,
+      default: 0
+    },
+    checksum: {
+      type: String,
+      index: true
+    },
     status: {
       type: String,
       enum: ["QUEUED", "PROCESSING", "COMPLETED", "FAILED", "PARTIAL_FAILURE"],
@@ -62,6 +70,7 @@ const uploadJobSchema = new Schema(
 
 uploadJobSchema.index({ userId: 1, status: 1, createdAt: -1 });
 uploadJobSchema.index({ portfolioId: 1, createdAt: -1 });
+uploadJobSchema.index({ userId: 1, portfolioId: 1, checksum: 1 });
 
 export type UploadJobDocument = InferSchemaType<typeof uploadJobSchema> & { _id: Types.ObjectId };
 

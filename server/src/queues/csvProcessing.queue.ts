@@ -6,7 +6,9 @@ export type CsvProcessingJobData = {
   userId: string;
   portfolioId: string;
   originalFileName: string;
-  csvContent: string;
+  filePath: string;
+  fileSize: number;
+  checksum: string;
   requestId: string;
 };
 

@@ -37,8 +37,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const form = useForm<AuthValues>({
     resolver: zodResolver(isRegister ? registerSchema : loginSchema),
     defaultValues: isRegister
-      ? { name: "", email: "demo@risklens.dev", password: "risklens123" }
-      : { email: "demo@risklens.dev", password: "risklens123" }
+      ? { name: "", email: "", password: "" }
+      : { email: "", password: "" }
   });
 
   async function onSubmit(values: AuthValues) {
@@ -63,7 +63,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           </div>
           <CardTitle>{isRegister ? "Create RiskLens account" : "Welcome back"}</CardTitle>
           <CardDescription>
-            {isRegister ? "Start a local analytics workspace." : "Use the seeded demo account after running the seed script."}
+            {isRegister ? "Start a secure analytics workspace." : "Log in to your portfolio risk workspace."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -71,16 +71,50 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             {isRegister ? (
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
-                <Input id="name" {...form.register("name")} />
+                <Input
+                  id="name"
+                  aria-invalid={Boolean(form.formState.errors.name)}
+                  aria-describedby={form.formState.errors.name ? "name-error" : undefined}
+                  {...form.register("name")}
+                />
+                {form.formState.errors.name ? (
+                  <p id="name-error" className="text-sm text-destructive">
+                    {form.formState.errors.name.message}
+                  </p>
+                ) : null}
               </div>
             ) : null}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" {...form.register("email")} />
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                aria-invalid={Boolean(form.formState.errors.email)}
+                aria-describedby={form.formState.errors.email ? "email-error" : undefined}
+                {...form.register("email")}
+              />
+              {form.formState.errors.email ? (
+                <p id="email-error" className="text-sm text-destructive">
+                  {form.formState.errors.email.message}
+                </p>
+              ) : null}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" {...form.register("password")} />
+              <Input
+                id="password"
+                type="password"
+                autoComplete={isRegister ? "new-password" : "current-password"}
+                aria-invalid={Boolean(form.formState.errors.password)}
+                aria-describedby={form.formState.errors.password ? "password-error" : undefined}
+                {...form.register("password")}
+              />
+              {form.formState.errors.password ? (
+                <p id="password-error" className="text-sm text-destructive">
+                  {form.formState.errors.password.message}
+                </p>
+              ) : null}
             </div>
             <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? "Working..." : isRegister ? "Create account" : "Login"}

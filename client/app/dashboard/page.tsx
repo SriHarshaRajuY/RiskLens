@@ -48,6 +48,20 @@ export default function DashboardPage() {
     return <Skeleton className="h-[520px] w-full" />;
   }
 
+  if (portfoliosQuery.isError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Dashboard unavailable</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">RiskLens could not load your portfolios. Please retry the request.</p>
+          <Button onClick={() => portfoliosQuery.refetch()}>Retry</Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!selected) {
     return (
       <Card>
@@ -81,15 +95,23 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Portfolio value" value={formatCurrency(summary?.totalPortfolioValue ?? 0)} detail={`${summary?.holdingsCount ?? 0} holdings`} />
+        <MetricCard
+          title="Portfolio value"
+          value={summaryQuery.isLoading ? "Loading" : formatCurrency(summary?.totalPortfolioValue ?? 0)}
+          detail={summaryQuery.isLoading ? "Syncing analytics" : `${summary?.holdingsCount ?? 0} holdings`}
+        />
         <MetricCard
           title="Total P&L"
-          value={formatCurrency(summary?.totalPnl ?? 0)}
+          value={summaryQuery.isLoading ? "Loading" : formatCurrency(summary?.totalPnl ?? 0)}
           tone={(summary?.totalPnl ?? 0) >= 0 ? "good" : "bad"}
-          detail={`Daily ${formatCurrency(summary?.dailyPnl ?? 0)}`}
+          detail={summaryQuery.isLoading ? "Awaiting cache" : `Daily ${formatCurrency(summary?.dailyPnl ?? 0)}`}
         />
-        <MetricCard title="Realized P&L" value={formatCurrency(summary?.realizedPnl ?? 0)} tone="neutral" />
-        <MetricCard title="Unrealized P&L" value={formatCurrency(summary?.unrealizedPnl ?? 0)} tone={(summary?.unrealizedPnl ?? 0) >= 0 ? "good" : "bad"} />
+        <MetricCard title="Realized P&L" value={summaryQuery.isLoading ? "Loading" : formatCurrency(summary?.realizedPnl ?? 0)} tone="neutral" />
+        <MetricCard
+          title="Unrealized P&L"
+          value={summaryQuery.isLoading ? "Loading" : formatCurrency(summary?.unrealizedPnl ?? 0)}
+          tone={(summary?.unrealizedPnl ?? 0) >= 0 ? "good" : "bad"}
+        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_360px]">

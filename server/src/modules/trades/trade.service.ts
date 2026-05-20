@@ -5,6 +5,7 @@ import { buildHoldings, replayTrades, type TradeLedgerEntry } from "../analytics
 import { invalidatePortfolioCache } from "../../utils/cache.js";
 import { notFound } from "../../utils/errors.js";
 import { paginationMeta, type Pagination } from "../../utils/pagination.js";
+import { portfolioWriteLockKey, withDistributedLock } from "../../utils/lock.js";
 import { Trade } from "./trade.model.js";
 import type { CreateTradeInput, UpdateTradeInput } from "./trade.validation.js";
 
@@ -44,28 +45,30 @@ async function validateLedger(userId: string, portfolioId: string, candidate?: T
 
 export const tradeService = {
   async create(userId: string, portfolioId: string, input: CreateTradeInput, requestId?: string) {
-    await portfolioService.getOwned(userId, portfolioId);
-    await validateLedger(userId, portfolioId, input);
+    return withDistributedLock(portfolioWriteLockKey(portfolioId), async () => {
+      await portfolioService.getOwned(userId, portfolioId);
+      await validateLedger(userId, portfolioId, input);
 
-    const trade = await Trade.create({
-      ...input,
-      userId,
-      portfolioId,
-      source: "MANUAL"
-    });
-
-    await Promise.all([
-      invalidatePortfolioCache(portfolioId, requestId),
-      activityService.record({
+      const trade = await Trade.create({
+        ...input,
         userId,
         portfolioId,
-        type: "TRADE_CREATED",
-        message: `${input.side} ${input.quantity} ${input.symbol} at ${input.price}`,
-        metadata: { tradeId: trade._id.toString() }
-      })
-    ]);
+        source: "MANUAL"
+      });
 
-    return trade;
+      await Promise.all([
+        invalidatePortfolioCache(portfolioId, requestId),
+        activityService.record({
+          userId,
+          portfolioId,
+          type: "TRADE_CREATED",
+          message: `${input.side} ${input.quantity} ${input.symbol} at ${input.price}`,
+          metadata: { tradeId: trade._id.toString() }
+        })
+      ]);
+
+      return trade;
+    });
   },
 
   async list(userId: string, portfolioId: string, pagination: Pagination) {
@@ -91,52 +94,56 @@ export const tradeService = {
     const existing = await Trade.findOne({ _id: tradeId, userId });
     if (!existing) throw notFound("Trade");
 
-    const candidate = toLedgerEntry({
-      _id: existing._id,
-      symbol: input.symbol ?? existing.symbol,
-      side: input.side ?? existing.side,
-      quantity: input.quantity ?? existing.quantity,
-      price: input.price ?? existing.price,
-      fees: input.fees ?? existing.fees,
-      tradeDate: input.tradeDate ?? existing.tradeDate
+    return withDistributedLock(portfolioWriteLockKey(existing.portfolioId.toString()), async () => {
+      const candidate = toLedgerEntry({
+        _id: existing._id,
+        symbol: input.symbol ?? existing.symbol,
+        side: input.side ?? existing.side,
+        quantity: input.quantity ?? existing.quantity,
+        price: input.price ?? existing.price,
+        fees: input.fees ?? existing.fees,
+        tradeDate: input.tradeDate ?? existing.tradeDate
+      });
+
+      await validateLedger(userId, existing.portfolioId.toString(), candidate, tradeId);
+
+      Object.assign(existing, input);
+      await existing.save();
+
+      await Promise.all([
+        invalidatePortfolioCache(existing.portfolioId.toString(), requestId),
+        activityService.record({
+          userId,
+          portfolioId: existing.portfolioId,
+          type: "TRADE_UPDATED",
+          message: `Updated ${existing.symbol} trade`,
+          metadata: { tradeId }
+        })
+      ]);
+
+      return existing;
     });
-
-    await validateLedger(userId, existing.portfolioId.toString(), candidate, tradeId);
-
-    Object.assign(existing, input);
-    await existing.save();
-
-    await Promise.all([
-      invalidatePortfolioCache(existing.portfolioId.toString(), requestId),
-      activityService.record({
-        userId,
-        portfolioId: existing.portfolioId,
-        type: "TRADE_UPDATED",
-        message: `Updated ${existing.symbol} trade`,
-        metadata: { tradeId }
-      })
-    ]);
-
-    return existing;
   },
 
   async remove(userId: string, tradeId: string, requestId?: string): Promise<void> {
     const trade = await Trade.findOne({ _id: tradeId, userId });
     if (!trade) throw notFound("Trade");
 
-    await validateLedger(userId, trade.portfolioId.toString(), undefined, tradeId);
-    await trade.deleteOne();
+    await withDistributedLock(portfolioWriteLockKey(trade.portfolioId.toString()), async () => {
+      await validateLedger(userId, trade.portfolioId.toString(), undefined, tradeId);
+      await trade.deleteOne();
 
-    await Promise.all([
-      invalidatePortfolioCache(trade.portfolioId.toString(), requestId),
-      activityService.record({
-        userId,
-        portfolioId: trade.portfolioId,
-        type: "TRADE_DELETED",
-        message: `Deleted ${trade.symbol} trade`,
-        metadata: { tradeId }
-      })
-    ]);
+      await Promise.all([
+        invalidatePortfolioCache(trade.portfolioId.toString(), requestId),
+        activityService.record({
+          userId,
+          portfolioId: trade.portfolioId,
+          type: "TRADE_DELETED",
+          message: `Deleted ${trade.symbol} trade`,
+          metadata: { tradeId }
+        })
+      ]);
+    });
   },
 
   async holdings(userId: string, portfolioId: string, requestId?: string) {

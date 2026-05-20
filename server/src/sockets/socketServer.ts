@@ -4,6 +4,7 @@ import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
 import { authService } from "../modules/auth/auth.service.js";
 import { metricsService } from "../modules/metrics/metrics.service.js";
+import { ACCESS_TOKEN_COOKIE, parseCookieHeader } from "../utils/cookies.js";
 
 let io: Server | null = null;
 
@@ -17,7 +18,11 @@ export function initSocketServer(httpServer: HttpServer): Server {
 
   io.use((socket, next) => {
     try {
-      const token = socket.handshake.auth?.token ?? socket.handshake.headers.authorization?.replace("Bearer ", "");
+      const cookies = parseCookieHeader(socket.handshake.headers.cookie);
+      const token =
+        socket.handshake.auth?.token ??
+        socket.handshake.headers.authorization?.replace("Bearer ", "") ??
+        cookies[ACCESS_TOKEN_COOKIE];
       if (!token || typeof token !== "string") {
         next(new Error("Authentication required"));
         return;

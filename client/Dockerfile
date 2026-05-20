@@ -14,7 +14,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/client/.next ./client/.next
-COPY --from=build /app/client/public ./client/public
 COPY client/package.json ./client/package.json
+COPY client/public ./client/public
 EXPOSE 3000
 CMD ["npm", "run", "start", "--workspace", "client"]

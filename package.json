@@ -2,6 +2,7 @@
   "name": "risklens-portfolio-analytics",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "RiskLens is a production-style portfolio analytics and risk alert SaaS platform.",
   "workspaces": [
     "client",

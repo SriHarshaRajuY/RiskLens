@@ -8,5 +8,5 @@ export type User = {
 
 export type AuthPayload = {
   user: User;
-  token: string;
+  csrfToken?: string;
 };
