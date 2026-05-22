@@ -1,12 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCw, UploadCloud } from "lucide-react";
+import { WorkspaceHeader } from "@/components/dashboard/WorkspaceHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useActivePortfolio } from "@/hooks/useActivePortfolio";
 import { apiRequest } from "@/lib/api";
+import type { Portfolio } from "@/types/portfolio";
 import type { UploadJob, UploadJobStatus } from "@/types/upload";
 
 function statusVariant(status: UploadJobStatus): "success" | "warning" | "destructive" | "secondary" | "default" {
@@ -35,25 +39,71 @@ function formatDate(value?: string): string {
 }
 
 export default function ImportsPage() {
+  const portfoliosQuery = useQuery({
+    queryKey: ["portfolios"],
+    queryFn: () => apiRequest<Portfolio[]>("/portfolios?limit=20")
+  });
+  const portfolios = portfoliosQuery.data ?? [];
+  const {
+    activePortfolio,
+    activePortfolioId,
+    setActivePortfolioId
+  } = useActivePortfolio(portfolios);
   const uploadsQuery = useQuery({
-    queryKey: ["uploads"],
-    queryFn: () => apiRequest<UploadJob[]>("/uploads?limit=50&sortBy=createdAt&sortOrder=desc"),
+    queryKey: ["uploads", activePortfolioId],
+    queryFn: () => apiRequest<UploadJob[]>(`/uploads?limit=50&sortBy=createdAt&sortOrder=desc&portfolioId=${activePortfolioId}`),
+    enabled: Boolean(activePortfolioId),
     refetchInterval: 5000
   });
 
+  if (portfoliosQuery.isError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Import history unavailable</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">RiskLens could not load your portfolio workspaces for import history.</p>
+          <Button onClick={() => portfoliosQuery.refetch()}>Retry</Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!portfoliosQuery.isLoading && portfolios.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>No portfolio selected</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">Create a portfolio before uploading trade history.</p>
+          <Button asChild>
+            <Link href="/dashboard/portfolios">Create portfolio</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">CSV operations</p>
-          <h1 className="text-3xl font-semibold">Import history</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Review queued, processing, completed, and failed CSV imports.</p>
-        </div>
-        <Button variant="outline" onClick={() => uploadsQuery.refetch()} disabled={uploadsQuery.isFetching}>
-          <RefreshCw className="h-4 w-4" />
-          Refresh
-        </Button>
-      </div>
+      <WorkspaceHeader
+        eyebrow="CSV operations"
+        title="Import history"
+        description={activePortfolio ? `${activePortfolio.name} CSV import history.` : "CSV import history."}
+        portfolios={portfolios}
+        activePortfolioId={activePortfolioId}
+        onPortfolioChange={setActivePortfolioId}
+        openHref={activePortfolioId ? `/dashboard/portfolios/${activePortfolioId}` : undefined}
+        openLabel="Open details"
+        actions={
+          <Button className="w-full sm:w-auto" variant="outline" onClick={() => uploadsQuery.refetch()} disabled={uploadsQuery.isFetching || !activePortfolioId}>
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
+        }
+      />
 
       <Card>
         <CardHeader>
@@ -71,7 +121,7 @@ export default function ImportsPage() {
               <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
                 <UploadCloud className="h-5 w-5" />
               </div>
-              CSV imports will appear here after you upload trades from a portfolio workspace.
+              No CSV imports yet.
             </div>
           ) : null}
           {(uploadsQuery.data ?? []).length > 0 ? (

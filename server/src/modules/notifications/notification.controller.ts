@@ -7,7 +7,8 @@ export const notificationController = {
   async list(req: Request, res: Response): Promise<Response> {
     const notifications = await notificationService.list(req.user!.id, {
       isRead: req.query.isRead ? String(req.query.isRead) === "true" : undefined,
-      limit: req.query.limit ? Number(req.query.limit) : undefined
+      limit: req.query.limit ? Number(req.query.limit) : undefined,
+      portfolioId: req.query.portfolioId ? String(req.query.portfolioId) : undefined
     });
     return ok(res, notifications);
   },

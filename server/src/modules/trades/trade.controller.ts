@@ -11,7 +11,7 @@ export const tradeController = {
   },
 
   async list(req: Request, res: Response): Promise<Response> {
-    const pagination = getPagination(req, { sortBy: "tradeDate" });
+    const pagination = getPagination(req, { sortBy: "tradeDate" }, ["tradeDate", "createdAt", "symbol", "side", "quantity", "price"]);
     const result = await tradeService.list(req.user!.id, requestParam(req, "portfolioId"), pagination);
     return ok(res, result.items, result.meta);
   },

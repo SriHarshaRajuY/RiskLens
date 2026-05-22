@@ -20,13 +20,13 @@ export function MetricCard({
   }[tone];
 
   return (
-    <Card>
+    <Card className="min-h-32">
       <CardHeader className="pb-2">
-        <CardTitle className="text-xs font-semibold uppercase text-muted-foreground">{title}</CardTitle>
+        <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className={cn("text-2xl font-semibold", toneClass)}>{value}</p>
-        {detail ? <p className="mt-1 text-xs text-muted-foreground">{detail}</p> : null}
+        <p className={cn("text-2xl font-semibold leading-tight sm:text-3xl", toneClass)}>{value}</p>
+        {detail ? <p className="mt-2 text-xs leading-5 text-muted-foreground">{detail}</p> : null}
       </CardContent>
     </Card>
   );

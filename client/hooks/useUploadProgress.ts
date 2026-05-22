@@ -17,6 +17,7 @@ export function useUploadProgress(portfolioId?: string) {
   const [progress, setProgress] = useState<UploadProgress | null>(null);
 
   useEffect(() => {
+    setProgress(null);
     const socket = getSocket();
     if (!socket) return;
 

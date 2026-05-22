@@ -4,6 +4,7 @@ import { portfolioService } from "../portfolio/portfolio.service.js";
 import { portfolioCacheKey, withCache } from "../../utils/cache.js";
 import { calculateDailyReturns, calculateRiskMetrics } from "../../utils/risk.js";
 import { round } from "../../utils/math.js";
+import { toObjectId } from "../../utils/objectId.js";
 import { buildHoldings, ledgerStats, type TradeLedgerEntry } from "./holdings.service.js";
 
 function toLedgerEntry(trade: {
@@ -26,7 +27,9 @@ function toLedgerEntry(trade: {
 
 async function getPortfolioTrades(userId: string, portfolioId: string): Promise<TradeLedgerEntry[]> {
   await portfolioService.getOwned(userId, portfolioId);
-  const trades = await Trade.find({ userId, portfolioId }).sort({ tradeDate: 1, createdAt: 1 }).lean();
+  const trades = await Trade.find({ userId: toObjectId(userId, "userId"), portfolioId: toObjectId(portfolioId, "portfolioId") })
+    .sort({ tradeDate: 1, createdAt: 1 })
+    .lean();
   return trades.map(toLedgerEntry);
 }
 
@@ -52,7 +55,7 @@ export const analyticsService = {
         const totalPortfolioValue = holdings.reduce((total, holding) => total + holding.marketValue, 0);
         const unrealizedPnl = holdings.reduce((total, holding) => total + holding.unrealizedPnl, 0);
         const totalPnl = stats.realizedPnl + unrealizedPnl;
-        const snapshots = await PortfolioSnapshot.find({ userId, portfolioId })
+        const snapshots = await PortfolioSnapshot.find({ userId: toObjectId(userId, "userId"), portfolioId: toObjectId(portfolioId, "portfolioId") })
           .sort({ date: -1 })
           .limit(2)
           .lean();
@@ -103,7 +106,9 @@ export const analyticsService = {
       portfolioCacheKey(portfolioId, "returns"),
       async () => {
         await portfolioService.getOwned(userId, portfolioId);
-        const snapshots = await PortfolioSnapshot.find({ userId, portfolioId }).sort({ date: 1 }).lean();
+        const snapshots = await PortfolioSnapshot.find({ userId: toObjectId(userId, "userId"), portfolioId: toObjectId(portfolioId, "portfolioId") })
+          .sort({ date: 1 })
+          .lean();
         const values = snapshots.map((snapshot) => snapshot.totalValue);
         const returns = calculateDailyReturns(values);
 
@@ -125,7 +130,7 @@ export const analyticsService = {
       portfolioCacheKey(portfolioId, "risk"),
       async () => {
         const [snapshots, holdings] = await Promise.all([
-          PortfolioSnapshot.find({ userId, portfolioId }).sort({ date: 1 }).lean(),
+          PortfolioSnapshot.find({ userId: toObjectId(userId, "userId"), portfolioId: toObjectId(portfolioId, "portfolioId") }).sort({ date: 1 }).lean(),
           this.holdings(userId, portfolioId, requestId)
         ]);
 

@@ -1,6 +1,6 @@
 export const samplePortfolio = {
   name: "US Large-Cap Risk Portfolio",
-  description: "Diversified sample portfolio with technology, financials, energy, and healthcare exposure.",
+  description: "Diversified portfolio with technology, financials, energy, and healthcare exposure.",
   baseCurrency: "USD" as const
 };
 

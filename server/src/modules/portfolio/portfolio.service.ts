@@ -1,19 +1,33 @@
-import { Types } from "mongoose";
+import mongoose from "mongoose";
 import { activityService } from "../activity/activity.service.js";
 import { Alert } from "../alerts/alert.model.js";
 import { PortfolioSnapshot } from "../snapshots/portfolioSnapshot.model.js";
 import { Trade } from "../trades/trade.model.js";
+import { UploadJob } from "../uploads/uploadJob.model.js";
+import { Notification } from "../notifications/notification.model.js";
 import { notFound } from "../../utils/errors.js";
 import { paginationMeta, type Pagination } from "../../utils/pagination.js";
 import { invalidatePortfolioCache } from "../../utils/cache.js";
+import { toObjectId } from "../../utils/objectId.js";
 import { Portfolio } from "./portfolio.model.js";
 import type { CreatePortfolioInput, UpdatePortfolioInput } from "./portfolio.validation.js";
+
+function objectIds(userId: string, portfolioId: string) {
+  return {
+    userObjectId: toObjectId(userId, "userId"),
+    portfolioObjectId: toObjectId(portfolioId, "portfolioId")
+  };
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 export const portfolioService = {
   async create(userId: string, input: CreatePortfolioInput) {
     const portfolio = await Portfolio.create({
       ...input,
-      userId
+      userId: toObjectId(userId, "userId")
     });
 
     await activityService.record({
@@ -28,11 +42,11 @@ export const portfolioService = {
 
   async list(userId: string, pagination: Pagination, filters: { search?: string; isArchived?: boolean }) {
     const query: Record<string, unknown> = {
-      userId: new Types.ObjectId(userId)
+      userId: toObjectId(userId, "userId")
     };
 
     if (filters.search) {
-      query.name = { $regex: filters.search, $options: "i" };
+      query.name = new RegExp(escapeRegex(filters.search), "i");
     }
 
     if (typeof filters.isArchived === "boolean") {
@@ -55,13 +69,15 @@ export const portfolioService = {
   },
 
   async getOwned(userId: string, portfolioId: string) {
-    const portfolio = await Portfolio.findOne({ _id: portfolioId, userId });
+    const { userObjectId, portfolioObjectId } = objectIds(userId, portfolioId);
+    const portfolio = await Portfolio.findOne({ _id: portfolioObjectId, userId: userObjectId });
     if (!portfolio) throw notFound("Portfolio");
     return portfolio;
   },
 
   async update(userId: string, portfolioId: string, input: UpdatePortfolioInput, requestId?: string) {
-    const portfolio = await Portfolio.findOneAndUpdate({ _id: portfolioId, userId }, input, {
+    const { userObjectId, portfolioObjectId } = objectIds(userId, portfolioId);
+    const portfolio = await Portfolio.findOneAndUpdate({ _id: portfolioObjectId, userId: userObjectId }, input, {
       new: true,
       runValidators: true
     });
@@ -80,19 +96,34 @@ export const portfolioService = {
   },
 
   async remove(userId: string, portfolioId: string, requestId?: string): Promise<void> {
-    const portfolio = await Portfolio.findOneAndDelete({ _id: portfolioId, userId });
-    if (!portfolio) throw notFound("Portfolio");
+    const { userObjectId, portfolioObjectId } = objectIds(userId, portfolioId);
+    const session = await mongoose.startSession();
+    let portfolioName = "";
+
+    try {
+      await session.withTransaction(async () => {
+        const portfolio = await Portfolio.findOne({ _id: portfolioObjectId, userId: userObjectId }).session(session);
+        if (!portfolio) throw notFound("Portfolio");
+        portfolioName = portfolio.name;
+
+        await Trade.deleteMany({ userId: userObjectId, portfolioId: portfolioObjectId }).session(session);
+        await Alert.deleteMany({ userId: userObjectId, portfolioId: portfolioObjectId }).session(session);
+        await PortfolioSnapshot.deleteMany({ userId: userObjectId, portfolioId: portfolioObjectId }).session(session);
+        await UploadJob.deleteMany({ userId: userObjectId, portfolioId: portfolioObjectId }).session(session);
+        await Notification.deleteMany({ userId: userObjectId, portfolioId: portfolioObjectId }).session(session);
+        await Portfolio.deleteOne({ _id: portfolioObjectId, userId: userObjectId }).session(session);
+      });
+    } finally {
+      await session.endSession();
+    }
 
     await Promise.all([
-      Trade.deleteMany({ userId, portfolioId }),
-      Alert.deleteMany({ userId, portfolioId }),
-      PortfolioSnapshot.deleteMany({ userId, portfolioId }),
       invalidatePortfolioCache(portfolioId, requestId),
       activityService.record({
         userId,
         portfolioId,
         type: "PORTFOLIO_DELETED",
-        message: `Deleted portfolio ${portfolio.name}`
+        message: `Deleted portfolio ${portfolioName}`
       })
     ]);
   }

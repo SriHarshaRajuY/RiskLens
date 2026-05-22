@@ -27,10 +27,29 @@ export function useRealtimeNotifications() {
       queryClient.invalidateQueries({ queryKey: ["activity"] });
     };
 
+    let reportedDisconnect = false;
+    const onConnect = () => {
+      if (reportedDisconnect) {
+        toast.success("Realtime updates restored");
+      }
+      reportedDisconnect = false;
+    };
+    const onRealtimeUnavailable = () => {
+      if (reportedDisconnect) return;
+      reportedDisconnect = true;
+      toast.warning("Realtime updates disconnected");
+    };
+
+    socket.on("connect", onConnect);
+    socket.on("connect_error", onRealtimeUnavailable);
+    socket.on("disconnect", onRealtimeUnavailable);
     socket.on("notification.created", onNotification);
     socket.on("upload.progress", onUploadProgress);
 
     return () => {
+      socket.off("connect", onConnect);
+      socket.off("connect_error", onRealtimeUnavailable);
+      socket.off("disconnect", onRealtimeUnavailable);
       socket.off("notification.created", onNotification);
       socket.off("upload.progress", onUploadProgress);
     };

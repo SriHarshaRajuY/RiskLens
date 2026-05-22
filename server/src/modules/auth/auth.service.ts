@@ -1,10 +1,11 @@
 import bcrypt from "bcryptjs";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import jwt, { type SignOptions } from "jsonwebtoken";
-import mongoose, { Types } from "mongoose";
+import { Types } from "mongoose";
 import { env } from "../../config/env.js";
 import { logger } from "../../config/logger.js";
 import { conflict, unauthorized } from "../../utils/errors.js";
+import { toObjectId } from "../../utils/objectId.js";
 import { metricsService } from "../metrics/metrics.service.js";
 import { Session } from "./session.model.js";
 import { User } from "./user.model.js";
@@ -56,7 +57,7 @@ async function createRefreshSession(
   const expiresAt = new Date(Date.now() + env.REFRESH_TOKEN_EXPIRES_DAYS * 24 * 60 * 60 * 1000);
 
   await Session.create({
-    userId: new Types.ObjectId(userId),
+    userId: toObjectId(userId, "userId"),
     tokenHash,
     expiresAt,
     userAgent: meta?.userAgent?.slice(0, 300),
@@ -92,7 +93,7 @@ export const authService = {
     if (existing) {
       metricsService.increment("authFailures");
       logger.warn({ requestId, email: input.email }, "Registration rejected because email already exists");
-      throw conflict("EMAIL_ALREADY_REGISTERED", "A user with this email already exists");
+      throw conflict("EMAIL_ALREADY_REGISTERED", "Email is already registered");
     }
 
     const passwordHash = await bcrypt.hash(input.password, env.BCRYPT_SALT_ROUNDS);
@@ -143,13 +144,8 @@ export const authService = {
     if (!refreshToken) throw unauthorized("Refresh token is required");
 
     const tokenHash = hashRefreshToken(refreshToken);
-    const session = await Session.findOne({
-      tokenHash,
-      revokedAt: mongoose.trusted({ $exists: false }),
-      expiresAt: mongoose.trusted({ $gt: new Date() })
-    });
-
-    if (!session) {
+    const session = await Session.findOne({ tokenHash });
+    if (!session || session.revokedAt || session.expiresAt <= new Date()) {
       metricsService.increment("authFailures");
       logger.warn({ requestId }, "Refresh rejected for missing or expired session");
       throw unauthorized("Session expired");
@@ -157,7 +153,7 @@ export const authService = {
 
     const user = await User.findById(session.userId);
     if (!user) {
-      await Session.updateMany({ userId: session.userId, revokedAt: mongoose.trusted({ $exists: false }) }, { revokedAt: new Date() });
+      await Session.updateMany({ userId: session.userId }, { revokedAt: new Date() });
       throw unauthorized("User no longer exists");
     }
 
@@ -172,14 +168,15 @@ export const authService = {
 
   async logout(refreshToken?: string): Promise<void> {
     if (!refreshToken) return;
-    await Session.findOneAndUpdate(
-      { tokenHash: hashRefreshToken(refreshToken), revokedAt: mongoose.trusted({ $exists: false }) },
-      { revokedAt: new Date() }
-    );
+    const session = await Session.findOne({ tokenHash: hashRefreshToken(refreshToken) });
+    if (session && !session.revokedAt) {
+      session.revokedAt = new Date();
+      await session.save();
+    }
   },
 
   async me(userId: string): Promise<PublicUser> {
-    const user = await User.findById(userId);
+    const user = await User.findById(toObjectId(userId, "userId"));
     if (!user) throw unauthorized();
     return toPublicUser(user);
   },

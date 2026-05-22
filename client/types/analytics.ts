@@ -3,6 +3,7 @@ export type Holding = {
   quantity: number;
   averageBuyPrice: number;
   currentPrice: number;
+  priceSource?: "alpha_vantage" | "demo";
   marketValue: number;
   costBasis: number;
   realizedPnl: number;

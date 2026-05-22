@@ -1,4 +1,5 @@
 import type { Types } from "mongoose";
+import { toObjectId } from "../../utils/objectId.js";
 import { ActivityLog } from "./activityLog.model.js";
 
 type ActivityType =
@@ -29,10 +30,13 @@ export const activityService = {
   },
 
   async listForUser(userId: string, limit = 30) {
-    return ActivityLog.find({ userId }).sort({ createdAt: -1 }).limit(limit).lean();
+    return ActivityLog.find({ userId: toObjectId(userId, "userId") }).sort({ createdAt: -1 }).limit(limit).lean();
   },
 
   async listForPortfolio(userId: string, portfolioId: string, limit = 30) {
-    return ActivityLog.find({ userId, portfolioId }).sort({ createdAt: -1 }).limit(limit).lean();
+    return ActivityLog.find({ userId: toObjectId(userId, "userId"), portfolioId: toObjectId(portfolioId, "portfolioId") })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
   }
 };

@@ -7,6 +7,12 @@ import { round } from "../../utils/math.js";
 export type PricePoint = {
   date: string;
   close: number;
+  source: "alpha_vantage" | "demo";
+};
+
+export type LatestPrice = {
+  price: number;
+  source: PricePoint["source"];
 };
 
 function symbolSeed(symbol: string): number {
@@ -27,7 +33,8 @@ function demoHistory(symbol: string, startDate: Date, endDate: Date): PricePoint
     if (day === 0 || day === 6) continue;
     points.push({
       date: toDateOnlyString(cursor),
-      close: demoPrice(symbol, cursor)
+      close: demoPrice(symbol, cursor),
+      source: "demo"
     });
   }
   return points;
@@ -57,7 +64,8 @@ async function fetchAlphaVantageDaily(symbol: string): Promise<PricePoint[]> {
   return Object.entries(series)
     .map(([date, values]) => ({
       date,
-      close: Number(values["4. close"])
+      close: Number(values["4. close"]),
+      source: "alpha_vantage" as const
     }))
     .filter((point) => Number.isFinite(point.close))
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -98,18 +106,29 @@ export const marketDataService = {
     return filtered;
   },
 
-  async getLatestPrice(symbol: string, requestId?: string): Promise<number> {
+  async getLatestPriceRecord(symbol: string, requestId?: string): Promise<LatestPrice> {
     const history = await this.getHistoricalPrices(symbol, addDays(new Date(), -10), new Date(), requestId);
-    return history.at(-1)?.close ?? demoPrice(symbol);
+    const latest = history.at(-1);
+    return {
+      price: latest?.close ?? demoPrice(symbol),
+      source: latest?.source ?? "demo"
+    };
+  },
+
+  async getLatestPrice(symbol: string, requestId?: string): Promise<number> {
+    return (await this.getLatestPriceRecord(symbol, requestId)).price;
+  },
+
+  async getLatestPriceRecords(symbols: string[], requestId?: string): Promise<Record<string, LatestPrice>> {
+    const unique = [...new Set(symbols.map((symbol) => symbol.toUpperCase()))];
+    const entries = await Promise.all(unique.map(async (symbol) => [symbol, await this.getLatestPriceRecord(symbol, requestId)] as const));
+
+    return Object.fromEntries(entries);
   },
 
   async getLatestPrices(symbols: string[], requestId?: string): Promise<Record<string, number>> {
     const unique = [...new Set(symbols.map((symbol) => symbol.toUpperCase()))];
-    const entries: Array<readonly [string, number]> = [];
-
-    for (const symbol of unique) {
-      entries.push([symbol, await this.getLatestPrice(symbol, requestId)] as const);
-    }
+    const entries = await Promise.all(unique.map(async (symbol) => [symbol, await this.getLatestPrice(symbol, requestId)] as const));
 
     return Object.fromEntries(entries);
   }

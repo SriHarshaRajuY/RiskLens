@@ -54,10 +54,12 @@ export function errorMiddleware(error: Error, req: Request, res: Response, _next
   }
 
   if ((error as { code?: number }).code === 11000) {
+    const duplicate = error as { keyPattern?: Record<string, unknown> };
+    const isDuplicateEmail = Boolean(duplicate.keyPattern?.email);
     res.status(409).json({
       success: false,
-      code: "DUPLICATE_RESOURCE",
-      message: "A resource with the same unique value already exists",
+      code: isDuplicateEmail ? "EMAIL_ALREADY_REGISTERED" : "DUPLICATE_RESOURCE",
+      message: isDuplicateEmail ? "Email is already registered" : "A resource with the same unique value already exists",
       requestId: req.requestId
     });
     return;

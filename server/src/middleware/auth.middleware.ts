@@ -1,4 +1,3 @@
-import { Types } from "mongoose";
 import type { NextFunction, Request, Response } from "express";
 import { logger } from "../config/logger.js";
 import { authService } from "../modules/auth/auth.service.js";
@@ -6,6 +5,7 @@ import { User } from "../modules/auth/user.model.js";
 import { metricsService } from "../modules/metrics/metrics.service.js";
 import { ACCESS_TOKEN_COOKIE, cookieValue } from "../utils/cookies.js";
 import { forbidden, unauthorized } from "../utils/errors.js";
+import { toObjectId } from "../utils/objectId.js";
 
 export async function requireAuth(req: Request, _res: Response, next: NextFunction): Promise<void> {
   try {
@@ -15,14 +15,15 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
     if (!token) throw unauthorized();
 
     const payload = authService.verifyToken(token);
-    const exists = await User.exists({ _id: payload.sub });
+    const userObjectId = toObjectId(payload.sub, "userId");
+    const exists = await User.exists({ _id: userObjectId });
     if (!exists) throw unauthorized("User no longer exists");
 
     req.user = {
       id: payload.sub,
       email: payload.email,
       role: payload.role,
-      mongoId: new Types.ObjectId(payload.sub)
+      mongoId: userObjectId
     };
 
     next();

@@ -142,11 +142,11 @@ sequenceDiagram
 
 ## Demo Flow
 
-Use this path to verify the product locally:
+Recommended local verification flow:
 
 1. Register or log in.
 2. Open `Dashboard -> Portfolios`.
-3. Click `Load sample portfolio`, or create a portfolio manually.
+3. Click `Create starter portfolio`, or create a portfolio manually.
 4. Open the portfolio detail page.
 5. Upload [`docs/sample-portfolio.csv`](docs/sample-portfolio.csv).
 6. Keep the worker process running so the CSV job can be processed.
@@ -156,7 +156,7 @@ Use this path to verify the product locally:
 10. Confirm notifications appear after alert evaluation.
 11. Run a backtest from `Dashboard -> Backtest`.
 
-The sample portfolio loader creates a professional portfolio with sample trades, snapshots, alerts, activity, and a notification so the dashboard can be reviewed immediately.
+The starter portfolio creates a populated workspace with trades, snapshots, alerts, activity, and a notification so the dashboard can be reviewed immediately.
 
 ---
 
@@ -286,7 +286,7 @@ Base path:
 
 | Method | Route | Purpose |
 | --- | --- | --- |
-| POST | `/demo/sample-portfolio` | Create or refresh the authenticated user's sample portfolio |
+| POST | `/demo/sample-portfolio` | Create or refresh the authenticated user's starter portfolio |
 
 ### Portfolios And Trades
 
@@ -438,14 +438,7 @@ Benchmark command:
 npm run benchmark:summary
 ```
 
-Latest recorded local benchmark:
-
-| Scenario | Average | p95 | Min | Max |
-| --- | ---: | ---: | ---: | ---: |
-| Cold cache | 2083.74 ms | 2181.2 ms | 936.46 ms | 20802.94 ms |
-| Warm Redis cache | 523.29 ms | 558.53 ms | 484.76 ms | 562.23 ms |
-
-Full benchmark notes are stored in [`docs/performance.md`](docs/performance.md). Regenerate this file after changing infrastructure, cache settings, or analytics code.
+Run the benchmark command locally to generate latency and throughput metrics. Full benchmark notes are stored in [`docs/performance.md`](docs/performance.md). Regenerate this file after changing infrastructure, cache settings, or analytics code.
 
 ---
 

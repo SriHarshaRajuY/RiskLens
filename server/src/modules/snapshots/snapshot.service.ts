@@ -1,19 +1,22 @@
-import mongoose from "mongoose";
 import { Portfolio } from "../portfolio/portfolio.model.js";
 import { analyticsService } from "../analytics/analytics.service.js";
 import { PortfolioSnapshot } from "./portfolioSnapshot.model.js";
 import { startOfUtcDay } from "../../utils/date.js";
 import { round } from "../../utils/math.js";
+import { toObjectId } from "../../utils/objectId.js";
 
 export const snapshotService = {
   async generateForPortfolio(input: { userId: string; portfolioId: string; requestId?: string }) {
     const today = startOfUtcDay(new Date());
     const summary = await analyticsService.summary(input.userId, input.portfolioId, input.requestId);
-    const previous = await PortfolioSnapshot.findOne({
-      userId: input.userId,
-      portfolioId: input.portfolioId,
-      date: mongoose.trusted({ $lt: today })
-    }).sort({ date: -1 });
+    const previousSnapshots = await PortfolioSnapshot.find({
+      userId: toObjectId(input.userId, "userId"),
+      portfolioId: toObjectId(input.portfolioId, "portfolioId")
+    })
+      .sort({ date: -1 })
+      .limit(10)
+      .lean();
+    const previous = previousSnapshots.find((snapshot) => snapshot.date < today);
 
     const dailyReturn =
       previous && previous.totalValue > 0
@@ -22,8 +25,8 @@ export const snapshotService = {
 
     const snapshot = await PortfolioSnapshot.findOneAndUpdate(
       {
-        userId: input.userId,
-        portfolioId: input.portfolioId,
+        userId: toObjectId(input.userId, "userId"),
+        portfolioId: toObjectId(input.portfolioId, "portfolioId"),
         date: today
       },
       {
@@ -42,8 +45,8 @@ export const snapshotService = {
 
   async generate(input: { userId?: string; portfolioId?: string; requestId?: string } = {}) {
     const query: Record<string, unknown> = { isArchived: false };
-    if (input.userId) query.userId = input.userId;
-    if (input.portfolioId) query._id = input.portfolioId;
+    if (input.userId) query.userId = toObjectId(input.userId, "userId");
+    if (input.portfolioId) query._id = toObjectId(input.portfolioId, "portfolioId");
 
     const portfolios = await Portfolio.find(query).lean();
     const snapshots = [];

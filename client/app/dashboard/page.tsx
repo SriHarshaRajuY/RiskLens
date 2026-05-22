@@ -2,17 +2,19 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Bell } from "lucide-react";
+import { Bell } from "lucide-react";
 import { ActivityFeed } from "@/components/activity/ActivityFeed";
 import { AllocationChart } from "@/components/charts/AllocationChart";
 import { PerformanceChart } from "@/components/charts/PerformanceChart";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { RiskMetricsPanel } from "@/components/dashboard/RiskMetricsPanel";
 import { RiskScoreCard } from "@/components/dashboard/RiskScoreCard";
-import { SamplePortfolioButton } from "@/components/dashboard/SamplePortfolioButton";
+import { StarterPortfolioButton } from "@/components/dashboard/StarterPortfolioButton";
+import { WorkspaceHeader } from "@/components/dashboard/WorkspaceHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useActivePortfolio } from "@/hooks/useActivePortfolio";
 import { usePortfolioSummary } from "@/hooks/usePortfolioSummary";
 import { useRiskMetrics } from "@/hooks/useRiskMetrics";
 import { apiRequest } from "@/lib/api";
@@ -27,22 +29,28 @@ export default function DashboardPage() {
     queryKey: ["portfolios"],
     queryFn: () => apiRequest<Portfolio[]>("/portfolios?limit=20")
   });
-  const selected = portfoliosQuery.data?.[0];
-  const summaryQuery = usePortfolioSummary(selected?._id);
-  const riskQuery = useRiskMetrics(selected?._id);
+  const portfolios = portfoliosQuery.data ?? [];
+  const {
+    activePortfolio: selected,
+    activePortfolioId: selectedPortfolioId,
+    setActivePortfolioId
+  } = useActivePortfolio(portfolios);
+  const summaryQuery = usePortfolioSummary(selectedPortfolioId);
+  const riskQuery = useRiskMetrics(selectedPortfolioId);
   const returnsQuery = useQuery({
-    queryKey: ["returns", selected?._id],
-    queryFn: () => apiRequest<ReturnPoint[]>(`/portfolios/${selected?._id}/returns`),
-    enabled: Boolean(selected?._id)
+    queryKey: ["returns", selectedPortfolioId],
+    queryFn: () => apiRequest<ReturnPoint[]>(`/portfolios/${selectedPortfolioId}/returns`),
+    enabled: Boolean(selectedPortfolioId)
   });
   const activityQuery = useQuery({
-    queryKey: ["activity", selected?._id],
-    queryFn: () => apiRequest<ActivityLog[]>(`/activity?portfolioId=${selected?._id}&limit=8`),
-    enabled: Boolean(selected?._id)
+    queryKey: ["activity", selectedPortfolioId],
+    queryFn: () => apiRequest<ActivityLog[]>(`/activity?portfolioId=${selectedPortfolioId}&limit=8`),
+    enabled: Boolean(selectedPortfolioId)
   });
   const notificationsQuery = useQuery({
-    queryKey: ["notifications"],
-    queryFn: () => apiRequest<Notification[]>("/notifications?isRead=false&limit=5")
+    queryKey: ["notifications", selectedPortfolioId, "unread"],
+    queryFn: () => apiRequest<Notification[]>(`/notifications?isRead=false&limit=5&portfolioId=${selectedPortfolioId}`),
+    enabled: Boolean(selectedPortfolioId)
   });
 
   if (portfoliosQuery.isLoading) {
@@ -63,7 +71,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!selected) {
+  if (portfolios.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -73,7 +81,21 @@ export default function DashboardPage() {
           <Button asChild>
             <Link href="/dashboard/portfolios">Create portfolio</Link>
           </Button>
-          <SamplePortfolioButton />
+          <StarterPortfolioButton />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!selected || !selectedPortfolioId) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Portfolio list needs refresh</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">One portfolio returned an invalid identifier. Refresh the portfolio list before opening it.</p>
+          <Button onClick={() => portfoliosQuery.refetch()}>Refresh portfolios</Button>
         </CardContent>
       </Card>
     );
@@ -84,21 +106,19 @@ export default function DashboardPage() {
   const loadingValue = summaryQuery.isLoading ? "Loading" : "-";
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">Primary portfolio</p>
-          <h1 className="text-3xl font-semibold">{selected.name}</h1>
-        </div>
-        <Button asChild variant="outline">
-          <Link href={`/dashboard/portfolios/${selected._id}`}>
-            Open portfolio
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </Button>
-      </div>
+    <div className="space-y-7">
+      <WorkspaceHeader
+        eyebrow="Portfolio overview"
+        title={selected.name}
+        description="Value, P&L, allocation, risk, activity, and unread events."
+        portfolios={portfolios}
+        activePortfolioId={selectedPortfolioId}
+        onPortfolioChange={setActivePortfolioId}
+        openHref={`/dashboard/portfolios/${selectedPortfolioId}`}
+        openLabel="Open details"
+      />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           title="Portfolio value"
           value={hasTrades ? formatCurrency(summary?.totalPortfolioValue ?? 0) : loadingValue}
@@ -118,19 +138,19 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
         <PerformanceChart data={returnsQuery.data ?? []} />
         <RiskScoreCard risk={riskQuery.data} />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid gap-5 xl:grid-cols-3">
         <div className="xl:col-span-2">
           <RiskMetricsPanel risk={riskQuery.data} />
         </div>
         <AllocationChart allocation={summary?.allocation ?? []} />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-5 xl:grid-cols-2">
         <ActivityFeed items={activityQuery.data ?? []} />
         <Card>
           <CardHeader className="flex-row items-center justify-between">
@@ -146,10 +166,7 @@ export default function DashboardPage() {
               </div>
             ))}
             <Button asChild variant="outline" size="sm">
-              <Link href="/dashboard/notifications">
-                View all
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+              <Link href="/dashboard/notifications">View all</Link>
             </Button>
           </CardContent>
         </Card>

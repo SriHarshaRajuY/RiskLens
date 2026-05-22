@@ -15,7 +15,7 @@ export function PerformanceChart({ data }: { data: ReturnPoint[] }) {
         <div className="h-80">
           {data.length === 0 ? (
             <div className="flex h-full items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
-              Portfolio snapshots will appear after trades are imported or snapshot jobs run.
+              No performance history yet.
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -28,7 +28,7 @@ export function PerformanceChart({ data }: { data: ReturnPoint[] }) {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis dataKey="date" tick={{ fontSize: 12 }} tickMargin={8} minTickGap={24} />
-                <YAxis tick={{ fontSize: 12 }} tickFormatter={(value) => `$${Number(value / 1000).toFixed(0)}k`} width={56} />
+                <YAxis tick={{ fontSize: 12 }} tickFormatter={(value) => `$${Number(value / 1000).toFixed(0)}k`} width={48} />
                 <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                 <Area type="monotone" dataKey="totalValue" stroke="#0f766e" strokeWidth={2} fill="url(#valueFill)" />
               </AreaChart>

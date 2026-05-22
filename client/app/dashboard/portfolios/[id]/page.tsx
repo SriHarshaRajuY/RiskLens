@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -16,9 +17,11 @@ import { HoldingsTable } from "@/components/tables/HoldingsTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { persistActivePortfolioId } from "@/hooks/useActivePortfolio";
 import { usePortfolioSummary } from "@/hooks/usePortfolioSummary";
 import { useRiskMetrics } from "@/hooks/useRiskMetrics";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, getApiErrorMessage } from "@/lib/api";
+import { isObjectId } from "@/lib/mongo";
 import { formatCurrency } from "@/lib/utils";
 import type { ActivityLog } from "@/types/activity";
 import type { Holding, ReturnPoint } from "@/types/analytics";
@@ -28,42 +31,73 @@ import type { Trade } from "@/types/trade";
 export default function PortfolioDetailPage() {
   const params = useParams<{ id: string }>();
   const portfolioId = params.id;
+  const isValidPortfolioId = isObjectId(portfolioId);
 
   const portfolioQuery = useQuery({
     queryKey: ["portfolio", portfolioId],
-    queryFn: () => apiRequest<Portfolio>(`/portfolios/${portfolioId}`)
+    queryFn: () => apiRequest<Portfolio>(`/portfolios/${portfolioId}`),
+    enabled: isValidPortfolioId,
+    retry: false
   });
-  const summaryQuery = usePortfolioSummary(portfolioId);
-  const riskQuery = useRiskMetrics(portfolioId);
+  const portfolioReady = isValidPortfolioId && portfolioQuery.isSuccess;
+  const summaryQuery = usePortfolioSummary(portfolioReady ? portfolioId : undefined);
+  const riskQuery = useRiskMetrics(portfolioReady ? portfolioId : undefined);
   const holdingsQuery = useQuery({
     queryKey: ["holdings", portfolioId],
-    queryFn: () => apiRequest<Holding[]>(`/portfolios/${portfolioId}/holdings`)
+    queryFn: () => apiRequest<Holding[]>(`/portfolios/${portfolioId}/holdings`),
+    enabled: portfolioReady
   });
   const returnsQuery = useQuery({
     queryKey: ["returns", portfolioId],
-    queryFn: () => apiRequest<ReturnPoint[]>(`/portfolios/${portfolioId}/returns`)
+    queryFn: () => apiRequest<ReturnPoint[]>(`/portfolios/${portfolioId}/returns`),
+    enabled: portfolioReady
   });
   const tradesQuery = useQuery({
     queryKey: ["trades", portfolioId],
-    queryFn: () => apiRequest<Trade[]>(`/portfolios/${portfolioId}/trades?limit=20&sortBy=tradeDate&sortOrder=desc`)
+    queryFn: () => apiRequest<Trade[]>(`/portfolios/${portfolioId}/trades?limit=20&sortBy=tradeDate&sortOrder=desc`),
+    enabled: portfolioReady
   });
   const activityQuery = useQuery({
     queryKey: ["activity", portfolioId],
-    queryFn: () => apiRequest<ActivityLog[]>(`/activity?portfolioId=${portfolioId}&limit=10`)
+    queryFn: () => apiRequest<ActivityLog[]>(`/activity?portfolioId=${portfolioId}&limit=10`),
+    enabled: portfolioReady
   });
+
+  useEffect(() => {
+    if (portfolioReady) {
+      persistActivePortfolioId(portfolioId);
+    }
+  }, [portfolioId, portfolioReady]);
 
   const summary = summaryQuery.data;
   const hasTrades = (summary?.tradeCount ?? 0) > 0;
   const loadingValue = summaryQuery.isLoading ? "Loading" : "-";
 
-  if (portfolioQuery.isError) {
+  if (isValidPortfolioId && portfolioQuery.isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Loading portfolio</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Opening the portfolio workspace...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!isValidPortfolioId || portfolioQuery.isError) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>Portfolio unavailable</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">This portfolio could not be loaded. It may have been deleted or you may not have access.</p>
+          <p className="text-sm text-muted-foreground">
+            {!isValidPortfolioId
+              ? "The portfolio link is invalid. Return to the portfolio list and open the workspace again."
+              : getApiErrorMessage(portfolioQuery.error, "This portfolio could not be loaded. It may have been deleted or you may not have access.")}
+          </p>
           <Button asChild>
             <Link href="/dashboard/portfolios">Back to portfolios</Link>
           </Button>
@@ -73,13 +107,13 @@ export default function PortfolioDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
+    <div className="space-y-7">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
           <p className="text-sm text-muted-foreground">Portfolio detail</p>
-          <h1 className="text-3xl font-semibold">{portfolioQuery.data?.name ?? "Portfolio"}</h1>
+          <h1 className="break-words text-2xl font-semibold sm:text-3xl">{portfolioQuery.data?.name ?? "Portfolio"}</h1>
         </div>
-        <Button asChild variant="outline">
+        <Button asChild variant="outline" className="w-full sm:w-auto">
           <Link href="/dashboard/portfolios">
             <ArrowLeft className="h-4 w-4" />
             Portfolios
@@ -87,7 +121,7 @@ export default function PortfolioDetailPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard title="Value" value={hasTrades ? formatCurrency(summary?.totalPortfolioValue ?? 0) : loadingValue} />
         <MetricCard title="Invested" value={hasTrades ? formatCurrency(summary?.totalInvestedAmount ?? 0) : loadingValue} />
         <MetricCard title="Realized" value={hasTrades ? formatCurrency(summary?.realizedPnl ?? 0) : loadingValue} />
@@ -98,24 +132,24 @@ export default function PortfolioDetailPage() {
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
         <PerformanceChart data={returnsQuery.data ?? []} />
         <RiskScoreCard risk={riskQuery.data} />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-5 xl:grid-cols-2">
         <HoldingsTable holdings={holdingsQuery.data ?? []} />
         <RiskMetricsPanel risk={riskQuery.data} />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-5 xl:grid-cols-2">
         <TradeUploadBox portfolioId={portfolioId} />
         <TradeForm portfolioId={portfolioId} />
       </div>
 
       <AlertsPanel portfolioId={portfolioId} />
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-5 xl:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Recent trades</CardTitle>

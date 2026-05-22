@@ -1,13 +1,14 @@
 import { createHash } from "node:crypto";
-import mongoose, { Types } from "mongoose";
+import mongoose, { Types, type ClientSession, type HydratedDocument } from "mongoose";
 import { activityService } from "../activity/activity.service.js";
 import { Alert } from "../alerts/alert.model.js";
 import { notificationService } from "../notifications/notification.service.js";
-import { Portfolio } from "../portfolio/portfolio.model.js";
+import { Portfolio, type PortfolioDocument } from "../portfolio/portfolio.model.js";
 import { PortfolioSnapshot } from "../snapshots/portfolioSnapshot.model.js";
 import { Trade } from "../trades/trade.model.js";
 import { invalidatePortfolioCache } from "../../utils/cache.js";
 import { addDays, startOfUtcDay } from "../../utils/date.js";
+import { toObjectId } from "../../utils/objectId.js";
 import { sampleAlerts, samplePortfolio, sampleTrades } from "./samplePortfolio.data.js";
 
 function sampleTradeKey(portfolioId: string, date: string, symbol: string, side: string, quantity: number, price: number, fees: number): string {
@@ -16,7 +17,7 @@ function sampleTradeKey(portfolioId: string, date: string, symbol: string, side:
     .digest("hex");
 }
 
-async function upsertSampleTrades(userId: Types.ObjectId, portfolioId: Types.ObjectId): Promise<number> {
+async function upsertSampleTrades(userId: Types.ObjectId, portfolioId: Types.ObjectId, session?: ClientSession): Promise<number> {
   const rows = sampleTrades.map(([date, symbol, side, quantity, price, fees]) => {
     const key = sampleTradeKey(portfolioId.toString(), date, symbol, side, quantity, price, fees);
     return {
@@ -30,13 +31,16 @@ async function upsertSampleTrades(userId: Types.ObjectId, portfolioId: Types.Obj
     };
   });
 
-  const existing = await Trade.find({
-    portfolioId,
-    idempotencyKey: mongoose.trusted({ $in: rows.map((row) => row.key) })
-  })
+  const candidateKeySet = new Set(rows.map((row) => row.key));
+  const existing = await Trade.find({ portfolioId })
     .select("idempotencyKey")
+    .session(session ?? null)
     .lean();
-  const existingKeys = new Set(existing.map((trade) => trade.idempotencyKey).filter(Boolean));
+  const existingKeys = new Set(
+    existing
+      .map((trade) => trade.idempotencyKey)
+      .filter((key): key is string => typeof key === "string" && candidateKeySet.has(key))
+  );
   const insertable = rows.filter((row) => !existingKeys.has(row.key));
 
   if (insertable.length > 0) {
@@ -53,14 +57,14 @@ async function upsertSampleTrades(userId: Types.ObjectId, portfolioId: Types.Obj
         source: "SEED",
         idempotencyKey: row.key
       })),
-      { ordered: false }
+      { ordered: false, session }
     );
   }
 
   return insertable.length;
 }
 
-async function upsertSampleSnapshots(userId: Types.ObjectId, portfolioId: Types.ObjectId): Promise<number> {
+async function upsertSampleSnapshots(userId: Types.ObjectId, portfolioId: Types.ObjectId, session?: ClientSession): Promise<number> {
   const start = addDays(startOfUtcDay(new Date()), -89);
   let value = 48_000;
   const investedValue = 44_500;
@@ -86,65 +90,85 @@ async function upsertSampleSnapshots(userId: Types.ObjectId, portfolioId: Types.
         source: "SEED"
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+    ).session(session ?? null);
   }
 
   return 90;
 }
 
-async function upsertSampleAlerts(userId: Types.ObjectId, portfolioId: Types.ObjectId): Promise<number> {
-  await Promise.all(
-    sampleAlerts.map((alert) =>
-      Alert.findOneAndUpdate(
-        { userId, portfolioId, type: alert.type },
-        {
-          userId,
-          portfolioId,
-          type: alert.type,
-          threshold: alert.threshold,
-          isActive: true
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      )
-    )
-  );
+async function upsertSampleAlerts(userId: Types.ObjectId, portfolioId: Types.ObjectId, session?: ClientSession): Promise<number> {
+  for (const alert of sampleAlerts) {
+    await Alert.findOneAndUpdate(
+      { userId, portfolioId, type: alert.type },
+      {
+        userId,
+        portfolioId,
+        type: alert.type,
+        threshold: alert.threshold,
+        isActive: true
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    ).session(session ?? null);
+  }
   return sampleAlerts.length;
 }
 
 export const demoService = {
   async loadSamplePortfolio(userId: string, requestId?: string) {
-    const userObjectId = new Types.ObjectId(userId);
-    let portfolio = await Portfolio.findOne({
-      userId: userObjectId,
-      name: samplePortfolio.name
-    });
-    const created = !portfolio;
+    const userObjectId = toObjectId(userId, "userId");
+    const session = await mongoose.startSession();
+    let portfolio: HydratedDocument<PortfolioDocument> | null = null;
+    let created = false;
+    let importedTrades = 0;
+    let snapshotsCreated = 0;
+    let alertsConfigured = 0;
 
-    if (!portfolio) {
-      portfolio = await Portfolio.create({
-        userId: userObjectId,
-        ...samplePortfolio
+    try {
+      await session.withTransaction(async () => {
+        portfolio = await Portfolio.findOne({
+          userId: userObjectId,
+          name: samplePortfolio.name
+        }).session(session);
+        created = !portfolio;
+
+        if (!portfolio) {
+          [portfolio] = await Portfolio.create(
+            [
+              {
+                userId: userObjectId,
+                ...samplePortfolio
+              }
+            ],
+            { session }
+          );
+        } else {
+          portfolio.description = samplePortfolio.description;
+          portfolio.baseCurrency = samplePortfolio.baseCurrency;
+          portfolio.isArchived = false;
+          await portfolio.save({ session });
+        }
+
+        importedTrades = await upsertSampleTrades(userObjectId, portfolio._id, session);
+        snapshotsCreated = await upsertSampleSnapshots(userObjectId, portfolio._id, session);
+        alertsConfigured = await upsertSampleAlerts(userObjectId, portfolio._id, session);
       });
-    } else {
-      portfolio.description = samplePortfolio.description;
-      portfolio.baseCurrency = samplePortfolio.baseCurrency;
-      portfolio.isArchived = false;
-      await portfolio.save();
+    } finally {
+      await session.endSession();
     }
 
-    const [importedTrades, snapshotsCreated, alertsConfigured] = await Promise.all([
-      upsertSampleTrades(userObjectId, portfolio._id),
-      upsertSampleSnapshots(userObjectId, portfolio._id),
-      upsertSampleAlerts(userObjectId, portfolio._id)
-    ]);
+    const loadedPortfolio = portfolio as HydratedDocument<PortfolioDocument> | null;
+
+    if (!loadedPortfolio) {
+      throw new Error("Starter portfolio could not be created");
+    }
 
     await Promise.all([
-      invalidatePortfolioCache(portfolio._id.toString(), requestId),
+      invalidatePortfolioCache(loadedPortfolio._id.toString(), requestId),
       activityService.record({
         userId,
-        portfolioId: portfolio._id,
+        portfolioId: loadedPortfolio._id,
         type: created ? "PORTFOLIO_CREATED" : "PORTFOLIO_UPDATED",
-        message: created ? `Loaded sample portfolio ${portfolio.name}` : `Refreshed sample portfolio ${portfolio.name}`,
+        message: created ? `Created starter portfolio ${loadedPortfolio.name}` : `Refreshed starter portfolio ${loadedPortfolio.name}`,
         metadata: {
           importedTrades,
           snapshotsCreated,
@@ -153,9 +177,9 @@ export const demoService = {
       }),
       notificationService.create({
         userId,
-        portfolioId: portfolio._id,
-        title: "Sample portfolio ready",
-        message: `${portfolio.name} now includes sample trades, risk history, alerts, and analytics data.`,
+        portfolioId: loadedPortfolio._id,
+        title: "Starter portfolio ready",
+        message: `${loadedPortfolio.name} is ready.`,
         severity: "LOW",
         metadata: {
           importedTrades,
@@ -166,7 +190,7 @@ export const demoService = {
     ]);
 
     return {
-      portfolio,
+      portfolio: loadedPortfolio,
       created,
       importedTrades,
       snapshotsCreated,

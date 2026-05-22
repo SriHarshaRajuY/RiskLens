@@ -11,7 +11,7 @@ export const alertController = {
   },
 
   async list(req: Request, res: Response): Promise<Response> {
-    const pagination = getPagination(req);
+    const pagination = getPagination(req, { sortBy: "createdAt" }, ["createdAt", "updatedAt", "type", "threshold", "lastTriggeredAt"]);
     const result = await alertService.list(req.user!.id, requestParam(req, "portfolioId"), pagination);
     return ok(res, result.items, result.meta);
   },

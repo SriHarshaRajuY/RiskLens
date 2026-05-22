@@ -3,6 +3,7 @@ import { emitToUser } from "../../sockets/socketServer.js";
 import { metricsService } from "../metrics/metrics.service.js";
 import { Notification } from "./notification.model.js";
 import { notFound } from "../../utils/errors.js";
+import { toObjectId } from "../../utils/objectId.js";
 
 export const notificationService = {
   async create(input: {
@@ -20,9 +21,10 @@ export const notificationService = {
     return notification;
   },
 
-  async list(userId: string, filters: { isRead?: boolean; limit?: number }) {
-    const query: Record<string, unknown> = { userId };
+  async list(userId: string, filters: { isRead?: boolean; limit?: number; portfolioId?: string }) {
+    const query: Record<string, unknown> = { userId: toObjectId(userId, "userId") };
     if (typeof filters.isRead === "boolean") query.isRead = filters.isRead;
+    if (filters.portfolioId) query.portfolioId = toObjectId(filters.portfolioId, "portfolioId");
 
     return Notification.find(query)
       .sort({ createdAt: -1 })
@@ -32,7 +34,7 @@ export const notificationService = {
 
   async markRead(userId: string, notificationId: string) {
     const notification = await Notification.findOneAndUpdate(
-      { _id: notificationId, userId },
+      { _id: toObjectId(notificationId, "notificationId"), userId: toObjectId(userId, "userId") },
       { isRead: true },
       { new: true }
     );

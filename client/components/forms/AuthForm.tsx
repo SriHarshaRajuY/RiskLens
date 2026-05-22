@@ -15,24 +15,45 @@ import { useAuth } from "@/lib/auth";
 import { getApiErrorMessage } from "@/lib/api";
 
 const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().email("Enter a valid email address"),
-  password: z.string().min(1, "Password is required")
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(1, "Email is required")
+    .max(254, "Email must be 254 characters or fewer")
+    .email("Enter a valid email address"),
+  password: z.string().min(1, "Password is required").max(128, "Password must be 128 characters or fewer")
 });
 
-const registerSchema = loginSchema.extend({
-  name: z.string().trim().min(2, "Name must be at least 2 characters").max(80, "Name must be under 80 characters"),
+const registerSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Name must be at least 2 characters")
+    .max(80, "Name must be 80 characters or fewer")
+    .regex(/^[A-Za-z][A-Za-z .'-]*[A-Za-z]$/, "Use letters, spaces, apostrophes, periods, or hyphens")
+    .refine((value) => !/\s{2,}/.test(value), "Name cannot contain repeated spaces"),
+  email: loginSchema.shape.email,
   password: z
     .string()
     .min(8, "Password must be at least 8 characters")
-    .max(128, "Password must be under 128 characters")
-    .regex(/[A-Za-z]/, "Password must contain a letter")
-    .regex(/[0-9]/, "Password must contain a number")
+    .max(128, "Password must be 128 characters or fewer")
+    .regex(/[a-z]/, "Password must include a lowercase letter")
+    .regex(/[A-Z]/, "Password must include an uppercase letter")
+    .regex(/[0-9]/, "Password must include a number")
+    .regex(/[^A-Za-z0-9]/, "Password must include a special character")
+    .refine((value) => !/\s/.test(value), "Password cannot contain spaces"),
+  confirmPassword: z.string().min(1, "Confirm your password")
+}).refine((values) => values.password === values.confirmPassword, {
+  path: ["confirmPassword"],
+  message: "Passwords do not match"
 });
 
 type AuthValues = {
   name?: string;
   email: string;
   password: string;
+  confirmPassword?: string;
 };
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
@@ -42,9 +63,22 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const form = useForm<AuthValues>({
     resolver: zodResolver(isRegister ? registerSchema : loginSchema),
     defaultValues: isRegister
-      ? { name: "", email: "", password: "" }
+      ? { name: "", email: "", password: "", confirmPassword: "" }
       : { email: "", password: "" }
   });
+  const passwordValue = form.watch("password") ?? "";
+  const passwordChecks = [
+    { label: "8+ characters", valid: passwordValue.length >= 8 },
+    { label: "Uppercase", valid: /[A-Z]/.test(passwordValue) },
+    { label: "Lowercase", valid: /[a-z]/.test(passwordValue) },
+    { label: "Number", valid: /[0-9]/.test(passwordValue) },
+    { label: "Special character", valid: /[^A-Za-z0-9]/.test(passwordValue) },
+    { label: "No spaces", valid: passwordValue.length > 0 && !/\s/.test(passwordValue) }
+  ];
+  const passwordDescription = [
+    form.formState.errors.password ? "password-error" : undefined,
+    isRegister ? "password-requirements" : undefined
+  ].filter(Boolean).join(" ") || undefined;
 
   async function onSubmit(values: AuthValues) {
     try {
@@ -131,7 +165,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
                   type="password"
                   autoComplete={isRegister ? "new-password" : "current-password"}
                   aria-invalid={Boolean(form.formState.errors.password)}
-                  aria-describedby={form.formState.errors.password ? "password-error" : undefined}
+                  aria-describedby={passwordDescription}
                   {...form.register("password")}
                 />
                 {form.formState.errors.password ? (
@@ -139,7 +173,34 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
                     {form.formState.errors.password.message}
                   </p>
                 ) : null}
+                {isRegister ? (
+                  <div id="password-requirements" className="grid grid-cols-2 gap-2 text-xs text-muted-foreground" aria-label="Password requirements">
+                    {passwordChecks.map((check) => (
+                      <span key={check.label} className={check.valid ? "text-emerald-700" : undefined}>
+                        {check.label}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
               </div>
+              {isRegister ? (
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    aria-invalid={Boolean(form.formState.errors.confirmPassword)}
+                    aria-describedby={form.formState.errors.confirmPassword ? "confirm-password-error" : undefined}
+                    {...form.register("confirmPassword")}
+                  />
+                  {form.formState.errors.confirmPassword ? (
+                    <p id="confirm-password-error" className="text-sm text-destructive">
+                      {form.formState.errors.confirmPassword.message}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting ? "Working..." : isRegister ? "Create account" : "Log in"}
               </Button>

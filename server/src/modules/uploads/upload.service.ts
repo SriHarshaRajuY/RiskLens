@@ -1,10 +1,10 @@
-import { Types } from "mongoose";
 import { createHash } from "node:crypto";
 import { emitToUser } from "../../sockets/socketServer.js";
 import { activityService } from "../activity/activity.service.js";
 import { portfolioService } from "../portfolio/portfolio.service.js";
 import { enqueueCsvProcessing } from "../../queues/csvProcessing.queue.js";
 import { badRequest, notFound, serviceUnavailable } from "../../utils/errors.js";
+import { toObjectId } from "../../utils/objectId.js";
 import { paginationMeta, type Pagination } from "../../utils/pagination.js";
 import { UploadJob } from "./uploadJob.model.js";
 
@@ -79,8 +79,8 @@ export const uploadService = {
 
     const checksum = createHash("sha256").update(input.file.buffer).digest("hex");
     const uploadJob = await UploadJob.create({
-      userId: new Types.ObjectId(input.userId),
-      portfolioId: new Types.ObjectId(input.portfolioId),
+      userId: toObjectId(input.userId, "userId"),
+      portfolioId: toObjectId(input.portfolioId, "portfolioId"),
       originalFileName: input.file.originalname,
       fileSize: input.file.size,
       checksum,
@@ -107,13 +107,13 @@ export const uploadService = {
     } catch (error) {
       uploadJob.status = "FAILED";
       uploadJob.failedAt = new Date();
-      uploadJob.rowErrors = [
+      uploadJob.set("rowErrors", [
         {
           row: 0,
           code: "CSV_QUEUE_UNAVAILABLE",
           message: error instanceof Error ? error.message : "CSV processing queue is unavailable"
         }
-      ];
+      ]);
       uploadJob.set("csvContent", undefined);
       await uploadJob.save();
       throw serviceUnavailable("CSV_QUEUE_UNAVAILABLE", "CSV upload queue is unavailable. Make sure Redis and the worker are running.");
@@ -143,7 +143,7 @@ export const uploadService = {
   },
 
   async getUploadJob(userId: string, uploadJobId: string) {
-    const uploadJob = await UploadJob.findOne({ _id: uploadJobId, userId }).lean();
+    const uploadJob = await UploadJob.findOne({ _id: toObjectId(uploadJobId, "uploadJobId"), userId: toObjectId(userId, "userId") }).lean();
     if (!uploadJob) throw notFound("Upload job");
     return uploadJob;
   },
@@ -154,14 +154,11 @@ export const uploadService = {
     filters: { portfolioId?: string; status?: string }
   ) {
     const query: Record<string, unknown> = {
-      userId: new Types.ObjectId(userId)
+      userId: toObjectId(userId, "userId")
     };
 
     if (filters.portfolioId) {
-      if (!Types.ObjectId.isValid(filters.portfolioId)) {
-        throw badRequest("INVALID_PORTFOLIO_ID", "Portfolio id is invalid");
-      }
-      query.portfolioId = new Types.ObjectId(filters.portfolioId);
+      query.portfolioId = toObjectId(filters.portfolioId, "portfolioId");
     }
 
     if (filters.status) {

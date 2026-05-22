@@ -11,7 +11,7 @@ export const portfolioController = {
   },
 
   async list(req: Request, res: Response): Promise<Response> {
-    const pagination = getPagination(req);
+    const pagination = getPagination(req, { sortBy: "createdAt" }, ["createdAt", "updatedAt", "name", "baseCurrency"]);
     const result = await portfolioService.list(req.user!.id, pagination, {
       search: req.query.search ? String(req.query.search) : undefined,
       isArchived: req.query.isArchived ? String(req.query.isArchived) === "true" : undefined

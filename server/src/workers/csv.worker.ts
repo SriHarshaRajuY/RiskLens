@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
-import { Worker } from "bullmq";
-import mongoose from "mongoose";
+import { Worker, type Job } from "bullmq";
 import { z } from "zod";
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
@@ -18,6 +17,7 @@ import { metricsService } from "../modules/metrics/metrics.service.js";
 import { invalidatePortfolioCache } from "../utils/cache.js";
 import { parseCsv } from "../utils/csvParser.js";
 import { portfolioWriteLockKey, withDistributedLock } from "../utils/lock.js";
+import { toObjectId } from "../utils/objectId.js";
 
 const csvRowSchema = z.object({
   date: z.coerce.date(),
@@ -89,6 +89,11 @@ function processingFailureMessage(error: unknown): string {
   return "CSV processing failed because the worker hit an internal processing error. Check the worker logs and retry the upload.";
 }
 
+function isFinalAttempt(job: Job): boolean {
+  const attempts = job.opts.attempts ?? 1;
+  return job.attemptsMade >= attempts - 1;
+}
+
 export const csvWorker = new Worker<CsvProcessingJobData>(
   "csv-processing",
   async (job) => {
@@ -123,10 +128,14 @@ export const csvWorker = new Worker<CsvProcessingJobData>(
     await emitProgress(data, { status: "PROCESSING", progress: 1 });
 
     try {
+      const userObjectId = toObjectId(data.userId, "userId");
+      const portfolioObjectId = toObjectId(data.portfolioId, "portfolioId");
+      const uploadJobObjectId = toObjectId(data.uploadJobId, "uploadJobId");
+
       return await withDistributedLock(
         portfolioWriteLockKey(data.portfolioId),
         async () => {
-      const existingTrades = await Trade.find({ userId: data.userId, portfolioId: data.portfolioId })
+      const existingTrades = await Trade.find({ userId: userObjectId, portfolioId: portfolioObjectId })
         .sort({ tradeDate: 1, createdAt: 1 })
         .lean();
       const ledger = existingTrades.map((trade) =>
@@ -185,8 +194,8 @@ export const csvWorker = new Worker<CsvProcessingJobData>(
           key,
           ledgerEntry: candidate,
           doc: {
-            userId: data.userId,
-            portfolioId: data.portfolioId,
+            userId: userObjectId,
+            portfolioId: portfolioObjectId,
             symbol: parsed.data.symbol,
             side: parsed.data.side,
             quantity: parsed.data.quantity,
@@ -194,7 +203,7 @@ export const csvWorker = new Worker<CsvProcessingJobData>(
             fees: parsed.data.fees,
             tradeDate: parsed.data.date,
             source: "CSV",
-            uploadJobId: data.uploadJobId,
+            uploadJobId: uploadJobObjectId,
             idempotencyKey: key
           }
         });
@@ -242,13 +251,15 @@ export const csvWorker = new Worker<CsvProcessingJobData>(
         }
       }
 
-      const existingKeys = await Trade.find({
-        portfolioId: data.portfolioId,
-        idempotencyKey: mongoose.trusted({ $in: validated.map((trade) => trade.key) })
-      })
+      const candidateKeySet = new Set(validated.map((trade) => trade.key));
+      const existingKeys = await Trade.find({ portfolioId: portfolioObjectId })
         .select("idempotencyKey")
         .lean();
-      const existingKeySet = new Set(existingKeys.map((trade) => trade.idempotencyKey).filter(Boolean));
+      const existingKeySet = new Set(
+        existingKeys
+          .map((trade) => trade.idempotencyKey)
+          .filter((key): key is string => typeof key === "string" && candidateKeySet.has(key))
+      );
       const insertable = validated.filter((trade) => {
         if (!existingKeySet.has(trade.key)) return true;
         errors.push({
@@ -348,8 +359,33 @@ export const csvWorker = new Worker<CsvProcessingJobData>(
         { ttlMs: 120_000, waitMs: 30_000 }
       );
     } catch (error) {
-      metricsService.increment("failedUploads");
       const failureMessage = processingFailureMessage(error);
+      const finalAttempt = isFinalAttempt(job);
+
+      if (!finalAttempt) {
+        await UploadJob.findByIdAndUpdate(data.uploadJobId, {
+          $set: {
+            status: "QUEUED",
+            rowErrors: [
+              {
+                row: 0,
+                code: "CSV_PROCESSING_RETRYING",
+                message: `${failureMessage} Retrying automatically.`
+              }
+            ]
+          }
+        });
+
+        await emitProgress(data, {
+          status: "QUEUED",
+          progress: Math.max(Number(job.progress) || 0, 1),
+          error: `${failureMessage} Retrying automatically.`
+        });
+
+        throw error;
+      }
+
+      metricsService.increment("failedUploads");
       await UploadJob.findByIdAndUpdate(data.uploadJobId, {
         $set: {
           status: "FAILED",

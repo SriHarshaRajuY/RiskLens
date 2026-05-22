@@ -16,7 +16,7 @@ const capabilities = [
   },
   {
     title: "Alert workflow",
-    description: "Redis-backed background jobs evaluate portfolio risk and deliver dashboard notifications.",
+    description: "Portfolio thresholds, alert status, notifications, and activity are kept in one workspace.",
     icon: BellRing
   }
 ];
@@ -63,7 +63,7 @@ export default function LandingPage() {
         <div className="absolute inset-0 dashboard-grid opacity-25" />
         <div className="relative mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl items-center gap-12 px-6 py-16 lg:grid-cols-[0.95fr_1.05fr]">
           <div>
-            <Badge className="mb-6 bg-white/10 text-teal-100">Full-stack portfolio analytics</Badge>
+            <Badge className="mb-6 bg-white/10 text-teal-100">Portfolio analytics platform</Badge>
             <h1 className="max-w-3xl text-5xl font-semibold tracking-normal md:text-7xl">RiskLens</h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
               A focused portfolio analytics workspace for tracking trades, monitoring risk, uploading CSV history,
@@ -86,7 +86,7 @@ export default function LandingPage() {
             <div className="rounded-md border border-white/10 bg-slate-950 p-5">
               <div className="flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-white">Example dashboard preview</p>
+                  <p className="text-sm font-semibold text-white">Dashboard preview</p>
                   <p className="mt-1 text-xs text-slate-400">Portfolio analytics workspace</p>
                 </div>
                 <div className="flex gap-2 text-xs">

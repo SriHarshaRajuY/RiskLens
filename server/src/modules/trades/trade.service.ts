@@ -1,9 +1,9 @@
-import mongoose, { Types } from "mongoose";
 import { activityService } from "../activity/activity.service.js";
 import { portfolioService } from "../portfolio/portfolio.service.js";
 import { buildHoldings, replayTrades, type TradeLedgerEntry } from "../analytics/holdings.service.js";
 import { invalidatePortfolioCache } from "../../utils/cache.js";
 import { notFound } from "../../utils/errors.js";
+import { toObjectId } from "../../utils/objectId.js";
 import { paginationMeta, type Pagination } from "../../utils/pagination.js";
 import { portfolioWriteLockKey, withDistributedLock } from "../../utils/lock.js";
 import { Trade } from "./trade.model.js";
@@ -30,15 +30,19 @@ function toLedgerEntry(trade: {
 }
 
 async function validateLedger(userId: string, portfolioId: string, candidate?: TradeLedgerEntry, excludeTradeId?: string): Promise<void> {
+  const userObjectId = toObjectId(userId, "userId");
+  const portfolioObjectId = toObjectId(portfolioId, "portfolioId");
   const existing = await Trade.find({
-    userId,
-    portfolioId,
-    ...(excludeTradeId ? { _id: mongoose.trusted({ $ne: excludeTradeId }) } : {})
+    userId: userObjectId,
+    portfolioId: portfolioObjectId
   })
     .sort({ tradeDate: 1, createdAt: 1 })
     .lean();
 
-  const ledger = existing.map(toLedgerEntry);
+  const excludedTradeObjectId = excludeTradeId ? toObjectId(excludeTradeId, "tradeId").toString() : undefined;
+  const ledger = existing
+    .filter((trade) => trade._id.toString() !== excludedTradeObjectId)
+    .map(toLedgerEntry);
   if (candidate) ledger.push(candidate);
   replayTrades(ledger);
 }
@@ -48,11 +52,13 @@ export const tradeService = {
     return withDistributedLock(portfolioWriteLockKey(portfolioId), async () => {
       await portfolioService.getOwned(userId, portfolioId);
       await validateLedger(userId, portfolioId, input);
+      const userObjectId = toObjectId(userId, "userId");
+      const portfolioObjectId = toObjectId(portfolioId, "portfolioId");
 
       const trade = await Trade.create({
         ...input,
-        userId,
-        portfolioId,
+        userId: userObjectId,
+        portfolioId: portfolioObjectId,
         source: "MANUAL"
       });
 
@@ -73,7 +79,7 @@ export const tradeService = {
 
   async list(userId: string, portfolioId: string, pagination: Pagination) {
     await portfolioService.getOwned(userId, portfolioId);
-    const query = { userId: new Types.ObjectId(userId), portfolioId: new Types.ObjectId(portfolioId) };
+    const query = { userId: toObjectId(userId, "userId"), portfolioId: toObjectId(portfolioId, "portfolioId") };
 
     const [items, total] = await Promise.all([
       Trade.find(query)
@@ -91,7 +97,7 @@ export const tradeService = {
   },
 
   async update(userId: string, tradeId: string, input: UpdateTradeInput, requestId?: string) {
-    const existing = await Trade.findOne({ _id: tradeId, userId });
+    const existing = await Trade.findOne({ _id: toObjectId(tradeId, "tradeId"), userId: toObjectId(userId, "userId") });
     if (!existing) throw notFound("Trade");
 
     return withDistributedLock(portfolioWriteLockKey(existing.portfolioId.toString()), async () => {
@@ -126,7 +132,7 @@ export const tradeService = {
   },
 
   async remove(userId: string, tradeId: string, requestId?: string): Promise<void> {
-    const trade = await Trade.findOne({ _id: tradeId, userId });
+    const trade = await Trade.findOne({ _id: toObjectId(tradeId, "tradeId"), userId: toObjectId(userId, "userId") });
     if (!trade) throw notFound("Trade");
 
     await withDistributedLock(portfolioWriteLockKey(trade.portfolioId.toString()), async () => {
@@ -148,7 +154,9 @@ export const tradeService = {
 
   async holdings(userId: string, portfolioId: string, requestId?: string) {
     await portfolioService.getOwned(userId, portfolioId);
-    const trades = await Trade.find({ userId, portfolioId }).sort({ tradeDate: 1, createdAt: 1 }).lean();
+    const trades = await Trade.find({ userId: toObjectId(userId, "userId"), portfolioId: toObjectId(portfolioId, "portfolioId") })
+      .sort({ tradeDate: 1, createdAt: 1 })
+      .lean();
     return buildHoldings(trades.map(toLedgerEntry), requestId);
   }
 };

@@ -37,7 +37,10 @@ export function HoldingsTable({ holdings }: { holdings: Holding[] }) {
                     </TableCell>
                     <TableCell className="text-right">{holding.quantity}</TableCell>
                     <TableCell className="text-right">{formatCurrency(holding.averageBuyPrice)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(holding.currentPrice)}</TableCell>
+                    <TableCell className="text-right">
+                      <div>{formatCurrency(holding.currentPrice)}</div>
+                      {holding.priceSource === "demo" ? <div className="text-xs text-muted-foreground">Fallback</div> : null}
+                    </TableCell>
                     <TableCell className="text-right">{formatCurrency(holding.marketValue)}</TableCell>
                     <TableCell className={holding.totalPnl >= 0 ? "text-right text-emerald-700" : "text-right text-red-700"}>
                       {formatCurrency(holding.totalPnl)}

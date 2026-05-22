@@ -21,10 +21,14 @@ export const uploadController = {
   },
 
   async listUploadJobs(req: Request, res: Response): Promise<Response> {
-    const result = await uploadService.listUploadJobs(req.user!.id, getPagination(req), {
-      portfolioId: req.query.portfolioId ? String(req.query.portfolioId) : undefined,
-      status: req.query.status ? String(req.query.status) : undefined
-    });
+    const result = await uploadService.listUploadJobs(
+      req.user!.id,
+      getPagination(req, { sortBy: "createdAt" }, ["createdAt", "updatedAt", "status", "originalFileName", "totalRows", "validRows", "invalidRows"]),
+      {
+        portfolioId: req.query.portfolioId ? String(req.query.portfolioId) : undefined,
+        status: req.query.status ? String(req.query.status) : undefined
+      }
+    );
     return ok(res, result.items, result.meta);
   }
 };

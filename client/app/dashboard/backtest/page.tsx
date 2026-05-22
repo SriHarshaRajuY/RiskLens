@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Play } from "lucide-react";
@@ -43,6 +43,7 @@ type Values = z.infer<typeof schema>;
 
 export default function BacktestPage() {
   const [latest, setLatest] = useState<BacktestResult | undefined>();
+  const queryClient = useQueryClient();
   const resultsQuery = useQuery({
     queryKey: ["backtests"],
     queryFn: () => apiRequest<BacktestResult[]>("/backtests")
@@ -68,9 +69,10 @@ export default function BacktestPage() {
           startDate: new Date(values.startDate).toISOString(),
           endDate: new Date(values.endDate).toISOString()
         })
-      }),
+    }),
     onSuccess: (result) => {
       setLatest(result);
+      queryClient.invalidateQueries({ queryKey: ["backtests"] });
       toast.success("Backtest completed");
     },
     onError: (error) => toast.error(getApiErrorMessage(error, "Backtest failed"))
@@ -79,78 +81,88 @@ export default function BacktestPage() {
   const active = latest ?? resultsQuery.data?.[0];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-sm text-muted-foreground">Strategy lab</p>
-        <h1 className="text-3xl font-semibold">Backtesting</h1>
+    <div className="space-y-7">
+      <div className="flex flex-col gap-2">
+        <div>
+          <p className="text-sm text-muted-foreground">Strategy lab</p>
+          <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">Backtesting</h1>
+          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Symbol-level strategy results from historical daily prices.</p>
+        </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
+      <div className="grid items-start gap-8 xl:grid-cols-[420px_minmax(0,1fr)]">
         <Card>
           <CardHeader>
             <CardTitle>Run backtest</CardTitle>
             <CardDescription>Buy-and-hold and moving-average crossover use daily historical prices.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form className="space-y-4" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
-              <div className="space-y-2">
+            <form className="space-y-5" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
+              <div className="space-y-2.5">
                 <Label>Symbol</Label>
                 <Input {...form.register("symbol")} aria-invalid={Boolean(form.formState.errors.symbol)} />
                 {form.formState.errors.symbol ? <p className="text-sm text-destructive">{form.formState.errors.symbol.message}</p> : null}
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <Label>Strategy</Label>
-                <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" {...form.register("strategy")}>
+                <select className="h-11 w-full rounded-md border bg-background px-3.5 text-sm font-medium outline-none transition focus:ring-2 focus:ring-ring" {...form.register("strategy")}>
                   <option value="BUY_AND_HOLD">Buy and hold</option>
                   <option value="MOVING_AVERAGE_CROSSOVER">Moving average crossover</option>
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2.5">
                   <Label>Start</Label>
                   <Input type="date" {...form.register("startDate")} aria-invalid={Boolean(form.formState.errors.startDate)} />
                   {form.formState.errors.startDate ? <p className="text-sm text-destructive">{form.formState.errors.startDate.message}</p> : null}
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <Label>End</Label>
                   <Input type="date" {...form.register("endDate")} aria-invalid={Boolean(form.formState.errors.endDate)} />
                   {form.formState.errors.endDate ? <p className="text-sm text-destructive">{form.formState.errors.endDate.message}</p> : null}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2.5">
                   <Label>Short</Label>
                   <Input type="number" {...form.register("shortWindow")} aria-invalid={Boolean(form.formState.errors.shortWindow)} />
                   {form.formState.errors.shortWindow ? <p className="text-sm text-destructive">{form.formState.errors.shortWindow.message}</p> : null}
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <Label>Long</Label>
                   <Input type="number" {...form.register("longWindow")} aria-invalid={Boolean(form.formState.errors.longWindow)} />
                   {form.formState.errors.longWindow ? <p className="text-sm text-destructive">{form.formState.errors.longWindow.message}</p> : null}
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <Label>Capital</Label>
                 <Input type="number" {...form.register("initialCapital")} aria-invalid={Boolean(form.formState.errors.initialCapital)} />
                 {form.formState.errors.initialCapital ? <p className="text-sm text-destructive">{form.formState.errors.initialCapital.message}</p> : null}
               </div>
-              <Button type="submit" disabled={mutation.isPending}>
+              <Button type="submit" className="w-full sm:w-auto" disabled={mutation.isPending}>
                 <Play className="h-4 w-4" />
                 Run backtest
               </Button>
             </form>
           </CardContent>
         </Card>
-        <div className="space-y-4">
+        <div className="space-y-5">
           {active ? (
             <>
-              <div className="grid gap-4 md:grid-cols-4">
+              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
                 <MetricCard title="Final capital" value={formatCurrency(active.finalCapital)} />
                 <MetricCard title="Return" value={`${active.totalReturn.toFixed(2)}%`} tone={active.totalReturn >= 0 ? "good" : "bad"} />
                 <MetricCard title="Drawdown" value={`${active.maxDrawdown.toFixed(2)}%`} tone="warn" />
                 <MetricCard title="Trades" value={String(active.numberOfTrades)} />
               </div>
               <BacktestResultChart result={active} />
+              {active.dataSource === "demo" ? (
+                <Card>
+                  <CardContent className="p-4 text-sm text-muted-foreground">
+                    Price source: fallback data.
+                  </CardContent>
+                </Card>
+              ) : null}
             </>
           ) : (
             <Card>

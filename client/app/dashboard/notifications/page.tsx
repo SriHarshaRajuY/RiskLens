@@ -1,19 +1,41 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { WorkspaceHeader } from "@/components/dashboard/WorkspaceHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useActivePortfolio } from "@/hooks/useActivePortfolio";
 import { apiRequest, getApiErrorMessage } from "@/lib/api";
 import type { Notification } from "@/types/notification";
+import type { Portfolio } from "@/types/portfolio";
 
 export default function NotificationsPage() {
   const queryClient = useQueryClient();
+  const [scope, setScope] = useState<"portfolio" | "all">("portfolio");
+  const portfoliosQuery = useQuery({
+    queryKey: ["portfolios"],
+    queryFn: () => apiRequest<Portfolio[]>("/portfolios?limit=20")
+  });
+  const portfolios = portfoliosQuery.data ?? [];
+  const {
+    activePortfolio,
+    activePortfolioId,
+    setActivePortfolioId
+  } = useActivePortfolio(portfolios);
+  const isPortfolioScoped = scope === "portfolio" && Boolean(activePortfolioId);
+  useEffect(() => {
+    if (!activePortfolioId && scope === "portfolio") {
+      setScope("all");
+    }
+  }, [activePortfolioId, scope]);
   const notificationsQuery = useQuery({
-    queryKey: ["notifications"],
-    queryFn: () => apiRequest<Notification[]>("/notifications?limit=100")
+    queryKey: ["notifications", scope, activePortfolioId],
+    queryFn: () =>
+      apiRequest<Notification[]>(isPortfolioScoped ? `/notifications?limit=100&portfolioId=${activePortfolioId}` : "/notifications?limit=100")
   });
   const markRead = useMutation({
     mutationFn: (id: string) =>
@@ -31,13 +53,40 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-sm text-muted-foreground">Realtime feed</p>
-        <h1 className="text-3xl font-semibold">Notifications</h1>
-      </div>
+      <WorkspaceHeader
+        eyebrow="Realtime feed"
+        title="Notifications"
+        description={
+          isPortfolioScoped && activePortfolio
+            ? `${activePortfolio.name} alerts, import updates, and activity.`
+            : "Account-wide alerts, import updates, and activity."
+        }
+        portfolios={portfolios}
+        activePortfolioId={activePortfolioId}
+        onPortfolioChange={setActivePortfolioId}
+        openHref={activePortfolioId ? `/dashboard/portfolios/${activePortfolioId}` : undefined}
+        openLabel="Open details"
+        actions={
+          <div className="grid w-full grid-cols-2 rounded-md border bg-background p-1 sm:w-auto">
+            <Button
+              type="button"
+              size="sm"
+              variant={isPortfolioScoped ? "default" : "ghost"}
+              className="h-8"
+              disabled={!activePortfolioId}
+              onClick={() => setScope("portfolio")}
+            >
+              Selected
+            </Button>
+            <Button type="button" size="sm" variant={scope === "all" ? "default" : "ghost"} className="h-8" onClick={() => setScope("all")}>
+              All
+            </Button>
+          </div>
+        }
+      />
       <Card>
         <CardHeader>
-          <CardTitle>Inbox</CardTitle>
+        <CardTitle>{isPortfolioScoped && activePortfolio ? `${activePortfolio.name} inbox` : "Account inbox"}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {notificationsQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading notifications...</p> : null}
@@ -48,7 +97,7 @@ export default function NotificationsPage() {
           ) : null}
           {!notificationsQuery.isLoading && !notificationsQuery.isError && (notificationsQuery.data ?? []).length === 0 ? (
             <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-              No notifications yet. Risk alerts and CSV imports will appear here when they run.
+              No notifications yet.
             </div>
           ) : null}
           {(notificationsQuery.data ?? []).map((item) => (

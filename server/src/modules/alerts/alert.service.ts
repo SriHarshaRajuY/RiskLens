@@ -1,9 +1,9 @@
-import { Types } from "mongoose";
 import { activityService } from "../activity/activity.service.js";
 import { analyticsService } from "../analytics/analytics.service.js";
 import { notificationService } from "../notifications/notification.service.js";
 import { portfolioService } from "../portfolio/portfolio.service.js";
 import { notFound } from "../../utils/errors.js";
+import { toObjectId } from "../../utils/objectId.js";
 import { paginationMeta, type Pagination } from "../../utils/pagination.js";
 import { Alert } from "./alert.model.js";
 import type { CreateAlertInput, UpdateAlertInput } from "./alert.validation.js";
@@ -22,7 +22,11 @@ function shouldThrottle(lastTriggeredAt?: Date): boolean {
 export const alertService = {
   async create(userId: string, portfolioId: string, input: CreateAlertInput) {
     await portfolioService.getOwned(userId, portfolioId);
-    const alert = await Alert.create({ userId, portfolioId, ...input });
+    const alert = await Alert.create({
+      userId: toObjectId(userId, "userId"),
+      portfolioId: toObjectId(portfolioId, "portfolioId"),
+      ...input
+    });
 
     await activityService.record({
       userId,
@@ -37,7 +41,7 @@ export const alertService = {
 
   async list(userId: string, portfolioId: string, pagination: Pagination) {
     await portfolioService.getOwned(userId, portfolioId);
-    const query = { userId: new Types.ObjectId(userId), portfolioId: new Types.ObjectId(portfolioId) };
+    const query = { userId: toObjectId(userId, "userId"), portfolioId: toObjectId(portfolioId, "portfolioId") };
     const [items, total] = await Promise.all([
       Alert.find(query)
         .sort({ [pagination.sortBy]: pagination.sortOrder })
@@ -54,7 +58,7 @@ export const alertService = {
   },
 
   async update(userId: string, alertId: string, input: UpdateAlertInput) {
-    const alert = await Alert.findOneAndUpdate({ _id: alertId, userId }, input, {
+    const alert = await Alert.findOneAndUpdate({ _id: toObjectId(alertId, "alertId"), userId: toObjectId(userId, "userId") }, input, {
       new: true,
       runValidators: true
     });
@@ -72,7 +76,7 @@ export const alertService = {
   },
 
   async remove(userId: string, alertId: string): Promise<void> {
-    const alert = await Alert.findOneAndDelete({ _id: alertId, userId });
+    const alert = await Alert.findOneAndDelete({ _id: toObjectId(alertId, "alertId"), userId: toObjectId(userId, "userId") });
     if (!alert) throw notFound("Alert");
 
     await activityService.record({
@@ -86,8 +90,8 @@ export const alertService = {
 
   async evaluate(input: { userId?: string; portfolioId?: string; requestId?: string } = {}) {
     const query: Record<string, unknown> = { isActive: true };
-    if (input.userId) query.userId = input.userId;
-    if (input.portfolioId) query.portfolioId = input.portfolioId;
+    if (input.userId) query.userId = toObjectId(input.userId, "userId");
+    if (input.portfolioId) query.portfolioId = toObjectId(input.portfolioId, "portfolioId");
 
     const alerts = await Alert.find(query).lean();
     const triggered: Array<{ alertId: string; type: string; value: number; threshold: number }> = [];

@@ -9,8 +9,17 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "RiskLens",
-  description: "Portfolio analytics and risk alert platform"
+  title: {
+    template: "%s | RiskLens",
+    default: "RiskLens"
+  },
+  description: "Production-grade portfolio analytics and risk alert platform. Monitor performance, analyze asset allocation, and configure advanced risk thresholds.",
+  openGraph: {
+    title: "RiskLens",
+    description: "Production-grade portfolio analytics and risk alert platform.",
+    siteName: "RiskLens",
+    type: "website"
+  }
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

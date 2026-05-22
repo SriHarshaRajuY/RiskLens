@@ -13,7 +13,7 @@ export function RiskScoreCard({ risk }: { risk?: RiskMetrics }) {
         </CardHeader>
         <CardContent>
           <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-            Risk score will appear after portfolio analytics are available.
+            No risk score yet.
           </div>
         </CardContent>
       </Card>
@@ -39,7 +39,7 @@ export function RiskScoreCard({ risk }: { risk?: RiskMetrics }) {
           <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(score, 100)}%` }} />
         </div>
         {risk?.insufficientHistory ? (
-          <p className="mt-3 text-xs text-muted-foreground">More snapshots will improve volatility and VaR readings.</p>
+          <p className="mt-3 text-xs text-muted-foreground">Limited return history.</p>
         ) : null}
       </CardContent>
     </Card>

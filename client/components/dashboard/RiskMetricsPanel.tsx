@@ -10,7 +10,7 @@ export function RiskMetricsPanel({ risk }: { risk?: RiskMetrics }) {
         </CardHeader>
         <CardContent>
           <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-            Risk metrics will appear after trades and snapshots are available.
+            No risk metrics yet.
           </div>
         </CardContent>
       </Card>
@@ -34,7 +34,7 @@ export function RiskMetricsPanel({ risk }: { risk?: RiskMetrics }) {
       <CardContent className="grid gap-3 sm:grid-cols-2">
         {risk.insufficientHistory ? (
           <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground sm:col-span-2">
-            Risk metrics that depend on returns will become more meaningful after portfolio snapshots are generated.
+            Return history is still limited.
           </div>
         ) : null}
         {metrics.map(([label, value]) => (

@@ -70,6 +70,11 @@ const backtestResultSchema = new Schema(
       type: Number,
       required: true
     },
+    dataSource: {
+      type: String,
+      enum: ["alpha_vantage", "demo"],
+      default: "demo"
+    },
     equityCurve: {
       type: [equityPointSchema],
       default: []

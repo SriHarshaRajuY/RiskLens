@@ -112,6 +112,7 @@ export function TradeUploadBox({ portfolioId }: { portfolioId: string }) {
           <span className="truncate">{selectedFileName || "No CSV selected"}</span>
         </div>
         <Button
+          className="w-full sm:w-auto"
           onClick={() => {
             const file = inputRef.current?.files?.[0];
             if (!file) {

@@ -3,6 +3,7 @@ import { marketDataService, type PricePoint } from "../analytics/marketData.serv
 import { calculateDailyReturns } from "../../utils/risk.js";
 import { maxDrawdown, mean, round, standardDeviation } from "../../utils/math.js";
 import { badRequest, notFound } from "../../utils/errors.js";
+import { toObjectId } from "../../utils/objectId.js";
 import { BacktestResult } from "./backtestResult.model.js";
 import type { RunBacktestInput } from "./backtest.validation.js";
 
@@ -108,9 +109,10 @@ export const backtestService = {
 
     const values = result.equityCurve.map((point) => point.value);
     const metrics = metricsFromEquity(values, input.initialCapital);
+    const dataSource = points.some((point) => point.source === "alpha_vantage") ? "alpha_vantage" : "demo";
 
     const saved = await BacktestResult.create({
-      userId,
+      userId: toObjectId(userId, "userId"),
       symbol: input.symbol,
       strategy: input.strategy,
       startDate: input.startDate,
@@ -122,6 +124,7 @@ export const backtestService = {
       maxDrawdown: metrics.maxDrawdown,
       numberOfTrades: result.numberOfTrades,
       winRate: result.winRate,
+      dataSource,
       equityCurve: result.equityCurve,
       parameters: {
         shortWindow: input.shortWindow,
@@ -140,11 +143,11 @@ export const backtestService = {
   },
 
   async list(userId: string) {
-    return BacktestResult.find({ userId }).sort({ createdAt: -1 }).limit(30).lean();
+    return BacktestResult.find({ userId: toObjectId(userId, "userId") }).sort({ createdAt: -1 }).limit(30).lean();
   },
 
   async get(userId: string, backtestId: string) {
-    const result = await BacktestResult.findOne({ _id: backtestId, userId }).lean();
+    const result = await BacktestResult.findOne({ _id: toObjectId(backtestId, "backtestId"), userId: toObjectId(userId, "userId") }).lean();
     if (!result) throw notFound("Backtest result");
     return result;
   }

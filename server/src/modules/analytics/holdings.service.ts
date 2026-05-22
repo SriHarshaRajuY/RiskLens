@@ -17,6 +17,7 @@ export type Holding = {
   quantity: number;
   averageBuyPrice: number;
   currentPrice: number;
+  priceSource: "alpha_vantage" | "demo";
   marketValue: number;
   costBasis: number;
   realizedPnl: number;
@@ -104,18 +105,19 @@ export function ledgerStats(trades: TradeLedgerEntry[]): {
 
 export async function buildHoldings(trades: TradeLedgerEntry[], requestId?: string): Promise<Holding[]> {
   const internal = replayTrades(trades).filter((holding) => holding.quantity > 0);
-  const prices = await marketDataService.getLatestPrices(
+  const prices = await marketDataService.getLatestPriceRecords(
     internal.map((holding) => holding.symbol),
     requestId
   );
 
   const subtotal = internal.reduce((total, holding) => {
-    const currentPrice = prices[holding.symbol] ?? holding.averageBuyPrice;
+    const currentPrice = prices[holding.symbol]?.price ?? holding.averageBuyPrice;
     return total + holding.quantity * currentPrice;
   }, 0);
 
   return internal.map((holding) => {
-    const currentPrice = prices[holding.symbol] ?? holding.averageBuyPrice;
+    const priceRecord = prices[holding.symbol];
+    const currentPrice = priceRecord?.price ?? holding.averageBuyPrice;
     const marketValue = holding.quantity * currentPrice;
     const costBasis = holding.quantity * holding.averageBuyPrice;
     const unrealizedPnl = marketValue - costBasis;
@@ -125,6 +127,7 @@ export async function buildHoldings(trades: TradeLedgerEntry[], requestId?: stri
       quantity: round(holding.quantity, 4),
       averageBuyPrice: round(holding.averageBuyPrice, 4),
       currentPrice: round(currentPrice, 2),
+      priceSource: priceRecord?.source ?? "demo",
       marketValue: round(marketValue, 2),
       costBasis: round(costBasis, 2),
       realizedPnl: round(holding.realizedPnl, 2),

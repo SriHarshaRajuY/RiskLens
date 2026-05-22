@@ -9,6 +9,7 @@ export type BacktestResult = {
   maxDrawdown: number;
   numberOfTrades: number;
   winRate: number;
+  dataSource?: "alpha_vantage" | "demo";
   equityCurve: Array<{ date: string; value: number }>;
   createdAt: string;
 };

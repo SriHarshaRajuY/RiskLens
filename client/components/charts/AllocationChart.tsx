@@ -15,34 +15,34 @@ export function AllocationChart({ allocation }: { allocation: PortfolioSummary["
       <CardContent>
         {allocation.length === 0 ? (
           <div className="flex h-44 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
-            Allocation appears after open holdings exist.
+            No allocation yet.
           </div>
         ) : (
-        <div className="grid gap-4 md:grid-cols-[180px_1fr]">
-          <div className="h-44">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={allocation} dataKey="value" nameKey="symbol" innerRadius={48} outerRadius={78} paddingAngle={3}>
-                  {allocation.map((entry, index) => (
-                    <Cell key={entry.symbol} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="space-y-3">
-            {allocation.map((entry, index) => (
-              <div key={entry.symbol} className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                  <span className="font-medium">{entry.symbol}</span>
+          <div className="grid gap-4 lg:grid-cols-[180px_1fr]">
+            <div className="h-44">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={allocation} dataKey="value" nameKey="symbol" innerRadius={48} outerRadius={78} paddingAngle={3}>
+                    {allocation.map((entry, index) => (
+                      <Cell key={entry.symbol} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="space-y-3">
+              {allocation.map((entry, index) => (
+                <div key={entry.symbol} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                    <span className="font-medium">{entry.symbol}</span>
+                  </div>
+                  <span className="text-muted-foreground">{entry.percent.toFixed(1)}%</span>
                 </div>
-                <span className="text-muted-foreground">{entry.percent.toFixed(1)}%</span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
         )}
       </CardContent>
     </Card>

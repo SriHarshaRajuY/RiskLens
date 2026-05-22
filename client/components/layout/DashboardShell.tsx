@@ -87,20 +87,20 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 border-r bg-white lg:block">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 border-r bg-white xl:block">
         <div className="flex h-16 items-center gap-2 border-b px-5">
           <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <Activity className="h-5 w-5" />
           </div>
           <div>
             <p className="text-sm font-semibold">RiskLens</p>
-            <p className="text-xs text-muted-foreground">Portfolio risk OS</p>
+            <p className="text-xs text-muted-foreground">Risk analytics</p>
           </div>
         </div>
         {navigation}
       </aside>
       {mobileNavOpen ? (
-        <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" role="presentation" onClick={() => setMobileNavOpen(false)}>
+        <div className="fixed inset-0 z-30 bg-black/40 xl:hidden" role="presentation" onClick={() => setMobileNavOpen(false)}>
           <aside
             className="h-full w-[min(20rem,85vw)] border-r bg-white shadow-xl"
             aria-label="Mobile navigation"
@@ -113,7 +113,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 </div>
                 <div>
                   <p className="text-sm font-semibold">RiskLens</p>
-                  <p className="text-xs text-muted-foreground">Portfolio risk OS</p>
+                  <p className="text-xs text-muted-foreground">Risk analytics</p>
                 </div>
               </div>
               <Button variant="ghost" size="icon" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)}>
@@ -124,10 +124,10 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           </aside>
         </div>
       ) : null}
-      <div className="lg:pl-64">
-        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-white/90 px-4 backdrop-blur md:px-8">
+      <div className="xl:pl-64">
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-white/90 px-4 backdrop-blur sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation" onClick={() => setMobileNavOpen(true)}>
+            <Button variant="ghost" size="icon" className="xl:hidden" aria-label="Open navigation" onClick={() => setMobileNavOpen(true)}>
               <Menu className="h-5 w-5" />
             </Button>
             <div className="min-w-0">
@@ -147,7 +147,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             Logout
           </Button>
         </header>
-        <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1480px] px-4 py-8 sm:px-6 lg:px-8">{children}</main>
       </div>
     </div>
   );
