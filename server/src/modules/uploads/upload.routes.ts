@@ -23,6 +23,8 @@ export const uploadRoutes = Router();
 
 uploadRoutes.use(requireAuth);
 
+uploadRoutes.get("/uploads", asyncHandler(uploadController.listUploadJobs));
+
 uploadRoutes.post(
   "/portfolios/:portfolioId/trades/upload",
   validateParams(portfolioIdParamsSchema),

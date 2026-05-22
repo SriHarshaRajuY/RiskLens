@@ -5,9 +5,11 @@ import { activityService } from "../activity/activity.service.js";
 import { portfolioService } from "../portfolio/portfolio.service.js";
 import { enqueueCsvProcessing } from "../../queues/csvProcessing.queue.js";
 import { badRequest, notFound, serviceUnavailable } from "../../utils/errors.js";
+import { paginationMeta, type Pagination } from "../../utils/pagination.js";
 import { UploadJob } from "./uploadJob.model.js";
 
 const REQUIRED_CSV_HEADERS = ["date", "symbol", "side", "quantity", "price", "fees"];
+const UPLOAD_STATUSES = new Set(["QUEUED", "PROCESSING", "COMPLETED", "FAILED", "PARTIAL_FAILURE"]);
 
 function normalizeHeader(header: string): string {
   return header.replace(/^\ufeff/, "").trim().toLowerCase();
@@ -144,5 +146,43 @@ export const uploadService = {
     const uploadJob = await UploadJob.findOne({ _id: uploadJobId, userId }).lean();
     if (!uploadJob) throw notFound("Upload job");
     return uploadJob;
+  },
+
+  async listUploadJobs(
+    userId: string,
+    pagination: Pagination,
+    filters: { portfolioId?: string; status?: string }
+  ) {
+    const query: Record<string, unknown> = {
+      userId: new Types.ObjectId(userId)
+    };
+
+    if (filters.portfolioId) {
+      if (!Types.ObjectId.isValid(filters.portfolioId)) {
+        throw badRequest("INVALID_PORTFOLIO_ID", "Portfolio id is invalid");
+      }
+      query.portfolioId = new Types.ObjectId(filters.portfolioId);
+    }
+
+    if (filters.status) {
+      if (!UPLOAD_STATUSES.has(filters.status)) {
+        throw badRequest("INVALID_UPLOAD_STATUS", "Upload status filter is invalid");
+      }
+      query.status = filters.status;
+    }
+
+    const [items, total] = await Promise.all([
+      UploadJob.find(query)
+        .sort({ [pagination.sortBy]: pagination.sortOrder })
+        .skip(pagination.skip)
+        .limit(pagination.limit)
+        .lean(),
+      UploadJob.countDocuments(query)
+    ]);
+
+    return {
+      items,
+      meta: paginationMeta(pagination.page, pagination.limit, total)
+    };
   }
 };

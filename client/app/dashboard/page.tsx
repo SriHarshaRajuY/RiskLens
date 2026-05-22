@@ -9,6 +9,7 @@ import { PerformanceChart } from "@/components/charts/PerformanceChart";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { RiskMetricsPanel } from "@/components/dashboard/RiskMetricsPanel";
 import { RiskScoreCard } from "@/components/dashboard/RiskScoreCard";
+import { SamplePortfolioButton } from "@/components/dashboard/SamplePortfolioButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -68,10 +69,11 @@ export default function DashboardPage() {
         <CardHeader>
           <CardTitle>No portfolios yet</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-3 sm:flex-row">
           <Button asChild>
             <Link href="/dashboard/portfolios">Create portfolio</Link>
           </Button>
+          <SamplePortfolioButton />
         </CardContent>
       </Card>
     );
@@ -79,7 +81,7 @@ export default function DashboardPage() {
 
   const summary = summaryQuery.data;
   const hasTrades = (summary?.tradeCount ?? 0) > 0;
-  const loadingValue = summaryQuery.isLoading ? "Loading" : "—";
+  const loadingValue = summaryQuery.isLoading ? "Loading" : "-";
 
   return (
     <div className="space-y-6">

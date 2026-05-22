@@ -2,22 +2,43 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Activity, Bell, BriefcaseBusiness, ChartSpline, Gauge, LogOut, Menu, ShieldAlert, X } from "lucide-react";
+import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import {
+  Activity,
+  Bell,
+  BriefcaseBusiness,
+  ChartSpline,
+  Gauge,
+  LogOut,
+  Menu,
+  ServerCog,
+  ShieldAlert,
+  UploadCloud,
+  X
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 
-const navItems = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+  adminOnly?: boolean;
+};
+
+const navItems: NavItem[] = [
   { href: "/dashboard", label: "Overview", icon: Gauge },
   { href: "/dashboard/portfolios", label: "Portfolios", icon: BriefcaseBusiness },
+  { href: "/dashboard/imports", label: "Imports", icon: UploadCloud },
   { href: "/dashboard/alerts", label: "Alerts", icon: ShieldAlert },
   { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
-  { href: "/dashboard/backtest", label: "Backtest", icon: ChartSpline }
+  { href: "/dashboard/backtest", label: "Backtest", icon: ChartSpline },
+  { href: "/dashboard/operations", label: "Operations", icon: ServerCog, adminOnly: true }
 ];
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isLoading, logout } = useAuth();
@@ -42,7 +63,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const navigation = (
     <nav className="space-y-1 p-3" aria-label="Primary navigation">
-      {navItems.map((item) => {
+      {navItems.filter((item) => !item.adminOnly || user.role === "ADMIN").map((item) => {
         const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
         const Icon = item.icon;
         return (

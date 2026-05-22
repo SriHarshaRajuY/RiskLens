@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { SamplePortfolioButton } from "@/components/dashboard/SamplePortfolioButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -85,9 +86,12 @@ export default function PortfoliosPage() {
         </CardContent>
       </Card>
       <div className="space-y-4">
-        <div>
-          <h1 className="text-3xl font-semibold">Portfolios</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage portfolios and open detailed analytics workspaces.</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold">Portfolios</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Manage portfolios and open detailed analytics workspaces.</p>
+          </div>
+          <SamplePortfolioButton />
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {(portfoliosQuery.data ?? []).map((portfolio) => (
@@ -109,7 +113,17 @@ export default function PortfoliosPage() {
           ))}
           {portfoliosQuery.isLoading ? <Card><CardContent className="p-6 text-sm text-muted-foreground">Loading portfolios...</CardContent></Card> : null}
           {!portfoliosQuery.isLoading && (portfoliosQuery.data ?? []).length === 0 ? (
-            <Card><CardContent className="p-6 text-sm text-muted-foreground">Create your first portfolio to start tracking risk.</CardContent></Card>
+            <Card>
+              <CardContent className="space-y-4 p-6">
+                <div>
+                  <p className="text-sm font-medium">No portfolios yet</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Create a portfolio manually or load the sample portfolio to review the complete analytics flow.
+                  </p>
+                </div>
+                <SamplePortfolioButton variant="default" />
+              </CardContent>
+            </Card>
           ) : null}
         </div>
       </div>

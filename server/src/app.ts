@@ -9,6 +9,7 @@ import { alertRoutes } from "./modules/alerts/alert.routes.js";
 import { analyticsRoutes } from "./modules/analytics/analytics.routes.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
 import { backtestRoutes } from "./modules/backtests/backtest.routes.js";
+import { demoRoutes } from "./modules/demo/demo.routes.js";
 import { portfolioRoutes } from "./modules/portfolio/portfolio.routes.js";
 import { tradeRoutes } from "./modules/trades/trade.routes.js";
 import { uploadRoutes } from "./modules/uploads/upload.routes.js";
@@ -70,6 +71,7 @@ const api = express.Router();
 
 api.use(csrfProtection);
 api.use("/auth", authRoutes);
+api.use("/demo", demoRoutes);
 api.use("/portfolios", portfolioRoutes);
 api.use("/", tradeRoutes);
 api.use("/", uploadRoutes);

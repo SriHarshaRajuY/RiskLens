@@ -54,7 +54,7 @@ export default function PortfolioDetailPage() {
 
   const summary = summaryQuery.data;
   const hasTrades = (summary?.tradeCount ?? 0) > 0;
-  const loadingValue = summaryQuery.isLoading ? "Loading" : "—";
+  const loadingValue = summaryQuery.isLoading ? "Loading" : "-";
 
   if (portfolioQuery.isError) {
     return (

@@ -91,6 +91,7 @@ export function TradeUploadBox({ portfolioId }: { portfolioId: string }) {
     queryClient.invalidateQueries({ queryKey: ["returns", portfolioId] });
     queryClient.invalidateQueries({ queryKey: ["trades", portfolioId] });
     queryClient.invalidateQueries({ queryKey: ["activity", portfolioId] });
+    queryClient.invalidateQueries({ queryKey: ["uploads"] });
   }, [displayStatus, portfolioId, queryClient]);
 
   return (
