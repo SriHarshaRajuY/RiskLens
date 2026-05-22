@@ -33,6 +33,16 @@ type ValidationDetails = {
   issues?: Array<{ path?: Array<string | number>; message?: string }>;
 };
 
+let csrfToken: string | null = null;
+
+export function setCsrfToken(token?: string | null): void {
+  csrfToken = token ?? null;
+}
+
+export function clearCsrfToken(): void {
+  csrfToken = null;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -100,11 +110,13 @@ function requestId(): string {
 let refreshPromise: Promise<void> | null = null;
 
 async function refreshSession(): Promise<void> {
-  refreshPromise ??= apiRequest<unknown>("/auth/refresh", {
+  refreshPromise ??= apiRequest<{ csrfToken?: string }>("/auth/refresh", {
     method: "POST",
     skipAuthRefresh: true
   })
-    .then(() => undefined)
+    .then((payload) => {
+      setCsrfToken(payload.csrfToken);
+    })
     .finally(() => {
       refreshPromise = null;
     });
@@ -136,7 +148,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   const hasJsonBody = !isForm && Boolean(options.body);
   const controller = new AbortController();
   const timeout = globalThis.setTimeout(() => controller.abort(), options.timeoutMs ?? 20_000);
-  const csrfToken = isUnsafeMethod(method) ? cookieValue(CSRF_COOKIE_NAME) : null;
+  const unsafeRequestCsrfToken = isUnsafeMethod(method) ? csrfToken ?? cookieValue(CSRF_COOKIE_NAME) : null;
 
   try {
     const response = await fetch(`${API_URL}${path}`, {
@@ -147,7 +159,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
       headers: {
         ...(hasJsonBody ? { "content-type": "application/json" } : {}),
         "x-request-id": requestId(),
-        ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
+        ...(unsafeRequestCsrfToken ? { "x-csrf-token": unsafeRequestCsrfToken } : {}),
         ...(options.headers ?? {})
       }
     });

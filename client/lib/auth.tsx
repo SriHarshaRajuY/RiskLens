@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { apiRequest, jsonBody } from "@/lib/api";
+import { apiRequest, clearCsrfToken, jsonBody, setCsrfToken } from "@/lib/api";
 import { disconnectSocket } from "@/lib/socket";
 import type { AuthPayload, User } from "@/types/auth";
 
@@ -20,13 +20,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    apiRequest<{ user: User }>("/auth/me")
+    apiRequest<AuthPayload>("/auth/me")
       .catch(async () => {
-        await apiRequest<AuthPayload>("/auth/refresh", { method: "POST", skipAuthRefresh: true });
-        return apiRequest<{ user: User }>("/auth/me");
+        const refreshed = await apiRequest<AuthPayload>("/auth/refresh", { method: "POST", skipAuthRefresh: true });
+        setCsrfToken(refreshed.csrfToken);
+        return apiRequest<AuthPayload>("/auth/me");
       })
-      .then((payload) => setUser(payload.user))
-      .catch(() => setUser(null))
+      .then((payload) => {
+        setCsrfToken(payload.csrfToken);
+        setUser(payload.user);
+      })
+      .catch(() => {
+        clearCsrfToken();
+        setUser(null);
+      })
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -39,6 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           method: "POST",
           body: jsonBody({ email, password })
         });
+        setCsrfToken(payload.csrfToken);
         setUser(payload.user);
       },
       async register(name: string, email: string, password: string) {
@@ -46,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           method: "POST",
           body: jsonBody({ name, email, password })
         });
+        setCsrfToken(payload.csrfToken);
         setUser(payload.user);
       },
       async logout() {
@@ -53,6 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           method: "POST",
           skipAuthRefresh: true
         }).catch(() => undefined);
+        clearCsrfToken();
         disconnectSocket();
         setUser(null);
       }

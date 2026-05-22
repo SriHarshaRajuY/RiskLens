@@ -2,19 +2,15 @@ import type { Server as HttpServer } from "node:http";
 import { randomUUID } from "node:crypto";
 import type { Redis } from "ioredis";
 import { Server } from "socket.io";
-import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
 import { createRedisConnection, getRedis } from "../config/redis.js";
 import { authService } from "../modules/auth/auth.service.js";
 import { metricsService } from "../modules/metrics/metrics.service.js";
 import { ACCESS_TOKEN_COOKIE, parseCookieHeader } from "../utils/cookies.js";
+import { isAllowedClientOrigin } from "../utils/origins.js";
 
 const REALTIME_CHANNEL = "risklens:realtime";
 const INSTANCE_ID = randomUUID();
-const localSocketOrigins = env.NODE_ENV === "production" ? [] : ["http://localhost:3000", "http://127.0.0.1:3000"];
-const allowedSocketOrigins = Array.from(
-  new Set([env.CLIENT_URL, ...localSocketOrigins, ...(env.CLIENT_URLS?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? [])])
-);
 
 let io: Server | null = null;
 let realtimeSubscriber: Redis | null = null;
@@ -63,7 +59,7 @@ export function initSocketServer(httpServer: HttpServer): Server {
   io = new Server(httpServer, {
     cors: {
       origin(origin, callback) {
-        if (!origin || allowedSocketOrigins.includes(origin)) {
+        if (isAllowedClientOrigin(origin)) {
           callback(null, true);
           return;
         }

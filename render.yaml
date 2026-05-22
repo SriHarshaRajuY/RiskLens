@@ -8,8 +8,6 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 5000
       - key: CLIENT_URL
         sync: false
       - key: SERVER_URL
@@ -32,8 +30,16 @@ services:
         value: none
       - key: CLIENT_URLS
         sync: false
+      - key: MARKET_DATA_PROVIDER
+        value: alpha_vantage
       - key: ALPHA_VANTAGE_API_KEY
         sync: false
+      - key: MARKET_DATA_FALLBACK
+        value: demo
+      - key: CACHE_TTL_SECONDS
+        value: 45
+      - key: CSV_BATCH_SIZE
+        value: 500
   - type: worker
     name: risklens-workers
     runtime: node
@@ -57,5 +63,13 @@ services:
         value: risklens-web
       - key: REFRESH_TOKEN_EXPIRES_DAYS
         value: 7
+      - key: MARKET_DATA_PROVIDER
+        value: alpha_vantage
       - key: ALPHA_VANTAGE_API_KEY
         sync: false
+      - key: MARKET_DATA_FALLBACK
+        value: demo
+      - key: CACHE_TTL_SECONDS
+        value: 45
+      - key: CSV_BATCH_SIZE
+        value: 500

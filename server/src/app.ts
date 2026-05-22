@@ -3,7 +3,6 @@ import cors from "cors";
 import express from "express";
 import type { RequestHandler } from "express";
 import helmet from "helmet";
-import { env } from "./config/env.js";
 import { adminRoutes } from "./modules/admin/admin.routes.js";
 import { alertRoutes } from "./modules/alerts/alert.routes.js";
 import { analyticsRoutes } from "./modules/analytics/analytics.routes.js";
@@ -20,15 +19,11 @@ import { csrfProtection } from "./middleware/csrf.middleware.js";
 import { errorMiddleware, notFoundMiddleware } from "./middleware/error.middleware.js";
 import { requestIdMiddleware } from "./middleware/requestId.middleware.js";
 import { requestLoggerMiddleware } from "./middleware/requestLogger.middleware.js";
+import { isAllowedClientOrigin } from "./utils/origins.js";
 
 export const app = express();
 
 app.disable("x-powered-by");
-
-const localClientOrigins = env.NODE_ENV === "production" ? [] : ["http://localhost:3000", "http://127.0.0.1:3000"];
-const allowedOrigins = Array.from(
-  new Set([env.CLIENT_URL, ...localClientOrigins, ...(env.CLIENT_URLS?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? [])])
-);
 
 app.use(requestIdMiddleware);
 app.use(
@@ -41,7 +36,7 @@ app.use(
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (isAllowedClientOrigin(origin)) {
         callback(null, true);
         return;
       }

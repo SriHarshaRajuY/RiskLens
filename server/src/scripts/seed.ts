@@ -12,10 +12,14 @@ import { PortfolioSnapshot } from "../modules/snapshots/portfolioSnapshot.model.
 import { Trade } from "../modules/trades/trade.model.js";
 import { addDays, startOfUtcDay } from "../utils/date.js";
 
-const demoEmail = "demo@risklens.dev";
-const demoPassword = "risklens123";
+const demoEmail = process.env.SEED_DEMO_EMAIL ?? "demo@risklens.dev";
+const demoPassword = process.env.SEED_DEMO_PASSWORD ?? "risklens123";
 
 async function main(): Promise<void> {
+  if (env.NODE_ENV === "production" && (!process.env.SEED_DEMO_EMAIL || !process.env.SEED_DEMO_PASSWORD)) {
+    throw new Error("Refusing to seed production with default demo credentials. Set SEED_DEMO_EMAIL and SEED_DEMO_PASSWORD explicitly.");
+  }
+
   await connectDb();
 
   const passwordHash = await bcrypt.hash(demoPassword, env.BCRYPT_SALT_ROUNDS);

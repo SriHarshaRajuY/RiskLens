@@ -217,11 +217,10 @@ The worker process is required for async CSV import processing, snapshots, alert
 npm run seed
 ```
 
-Seeded admin account:
+The seed script creates a local demo account, a populated portfolio, snapshots, alerts, notifications, and activity records. For production environments, provide explicit seed credentials before running it:
 
-```text
-demo@risklens.dev
-risklens123
+```bash
+SEED_DEMO_EMAIL=admin@example.com SEED_DEMO_PASSWORD=replace_with_a_strong_password npm run seed
 ```
 
 ---
@@ -248,11 +247,12 @@ Important server variables:
 | --- | --- |
 | `MONGODB_URI` | MongoDB connection string |
 | `REDIS_URL` | Redis or Upstash Redis URL |
-| `JWT_SECRET` | Access-token signing secret |
+| `JWT_SECRET` | JWT signing secret. Use at least 32 characters in production |
 | `JWT_EXPIRES_IN` | Access token lifetime |
-| `REFRESH_TOKEN_SECRET` | Refresh-token signing secret |
 | `CLIENT_URL` | Frontend origin |
-| `CLIENT_URLS` | Optional comma-separated allowed origins |
+| `CLIENT_URLS` | Optional comma-separated allowed frontend origins |
+| `COOKIE_SAME_SITE` | Use `lax` locally and `none` for cross-site hosted frontend/backend deployments |
+| `MARKET_DATA_PROVIDER` | `alpha_vantage` or `demo` |
 | `ALPHA_VANTAGE_API_KEY` | Optional market data provider key |
 
 Important client variable:
@@ -456,10 +456,16 @@ Planned deployment topology:
 
 Production notes:
 
+- Deploy the Vercel frontend with `client` as the project root directory.
+- Deploy the Render API and worker from the repository root using `render.yaml`.
 - API and workers must use the same MongoDB and Redis instances.
 - Deploy the worker as a separate long-running process.
-- `CLIENT_URL` and `CLIENT_URLS` must include deployed frontend origins.
-- Use secure cookies and `COOKIE_SAME_SITE=none` for cross-site frontend/backend deployments.
+- Set Vercel `NEXT_PUBLIC_API_URL` to the deployed API URL with `/api/v1`.
+- Set Vercel `NEXT_PUBLIC_SOCKET_URL` to the deployed API origin without `/api/v1`.
+- Set API `CLIENT_URL` to the deployed frontend origin.
+- Add Vercel preview domains to API `CLIENT_URLS` only if preview deployments need API access.
+- Use `COOKIE_SAME_SITE=none` for cross-site frontend/backend deployments. Leave `COOKIE_DOMAIN` empty unless both apps share a parent custom domain.
+- Use a production `JWT_SECRET` with at least 32 characters.
 - Rotate all local development secrets before deployment.
 
 ---

@@ -27,9 +27,10 @@ function sameSite(): CookieOptions["sameSite"] {
 }
 
 function baseCookieOptions(): CookieOptions {
+  const sameSiteValue = sameSite();
   return {
-    secure: isProduction,
-    sameSite: sameSite(),
+    secure: isProduction || sameSiteValue === "none",
+    sameSite: sameSiteValue,
     domain: env.COOKIE_DOMAIN,
     path: "/"
   };
