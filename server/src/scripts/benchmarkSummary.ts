@@ -112,7 +112,7 @@ async function measure(baseUrl: string, pathName: string, token: string, iterati
 
 async function getBenchmarkAccessToken(): Promise<string> {
   const email = process.env.BENCHMARK_EMAIL ?? "demo@risklens.dev";
-  const password = process.env.BENCHMARK_PASSWORD ?? "risklens123";
+  const password = process.env.BENCHMARK_PASSWORD ?? "RiskLensDemo123!";
 
   try {
     const auth = await authService.login({ email, password }, "benchmark-summary");

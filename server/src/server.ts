@@ -5,8 +5,9 @@ import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { closeRedis, getRedis } from "./config/redis.js";
 import { initSocketServer } from "./sockets/socketServer.js";
+import { isMainModule } from "./utils/runtime.js";
 
-async function bootstrap(): Promise<void> {
+export async function startServer(): Promise<void> {
   await connectDb();
   await getRedis().ping();
 
@@ -29,7 +30,9 @@ async function bootstrap(): Promise<void> {
   process.on("SIGTERM", shutdown);
 }
 
-bootstrap().catch((error) => {
-  logger.error({ error }, "API bootstrap failed");
-  process.exit(1);
-});
+if (isMainModule(import.meta.url)) {
+  startServer().catch((error) => {
+    logger.error({ error }, "API bootstrap failed");
+    process.exit(1);
+  });
+}

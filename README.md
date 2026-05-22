@@ -6,6 +6,13 @@ RiskLens is a full-stack TypeScript portfolio analytics platform for ingesting t
 
 It is built as a production-style fintech SaaS application with a separate Next.js frontend, Express API, MongoDB persistence, Redis caching, BullMQ workers, Socket.IO realtime updates, and structured observability.
 
+**Live deployment**
+
+| Service | URL |
+| --- | --- |
+| Web app | [risklens-client.vercel.app](https://risklens-client.vercel.app) |
+| API health | [risklens-api-qn0e.onrender.com/health](https://risklens-api-qn0e.onrender.com/health) |
+
 ---
 
 ## Table Of Contents
@@ -142,14 +149,14 @@ sequenceDiagram
 
 ## Demo Flow
 
-Recommended local verification flow:
+Recommended verification flow:
 
 1. Register or log in.
 2. Open `Dashboard -> Portfolios`.
 3. Click `Create starter portfolio`, or create a portfolio manually.
 4. Open the portfolio detail page.
 5. Upload [`docs/sample-portfolio.csv`](docs/sample-portfolio.csv).
-6. Keep the worker process running so the CSV job can be processed.
+6. Keep the worker process running locally. In the deployed free Render setup, the API and workers run inside the same web service.
 7. Confirm imports appear in `Dashboard -> Imports`.
 8. Confirm trades, holdings, P&L, allocation, risk metrics, and activity update.
 9. Create an alert from `Dashboard -> Alerts`.
@@ -238,7 +245,9 @@ Use the examples as templates:
 
 ```text
 server/.env.example
+server/.env.production.example
 client/.env.example
+client/.env.production.example
 ```
 
 Important server variables:
@@ -259,8 +268,8 @@ Important client variable:
 
 | Variable | Purpose |
 | --- | --- |
-| `NEXT_PUBLIC_API_URL` | Backend API base URL, for example `http://localhost:5000/api/v1` |
-| `NEXT_PUBLIC_SOCKET_URL` | Backend socket URL, for example `http://localhost:5000` |
+| `NEXT_PUBLIC_API_URL` | Backend API base URL, for example `https://risklens-api-qn0e.onrender.com/api/v1` |
+| `NEXT_PUBLIC_SOCKET_URL` | Backend socket URL, for example `https://risklens-api-qn0e.onrender.com` |
 
 ---
 
@@ -444,29 +453,28 @@ Run the benchmark command locally to generate latency and throughput metrics. Fu
 
 ## Deployment Notes
 
-Planned deployment topology:
+Current deployment topology:
 
 | Layer | Recommended Target |
 | --- | --- |
-| Frontend | Vercel |
-| API | Render, Railway, Fly.io, or Koyeb |
-| Worker | Separate backend worker service |
+| Frontend | Vercel: [risklens-client.vercel.app](https://risklens-client.vercel.app) |
+| API + workers | Render free web service: [risklens-api-qn0e.onrender.com](https://risklens-api-qn0e.onrender.com) |
 | Database | MongoDB Atlas |
 | Redis | Upstash Redis |
 
 Production notes:
 
 - Deploy the Vercel frontend with `client` as the project root directory.
-- Deploy the Render API and worker from the repository root using `render.yaml`.
-- API and workers must use the same MongoDB and Redis instances.
-- Deploy the worker as a separate long-running process.
-- Set Vercel `NEXT_PUBLIC_API_URL` to the deployed API URL with `/api/v1`.
-- Set Vercel `NEXT_PUBLIC_SOCKET_URL` to the deployed API origin without `/api/v1`.
-- Set API `CLIENT_URL` to the deployed frontend origin.
+- The free Render deployment uses one web service that starts both the API and BullMQ workers with `npm run start:render --workspace server`.
+- For a larger production setup, split workers into a separate long-running process that uses the same MongoDB and Redis instances.
+- Set Vercel `NEXT_PUBLIC_API_URL` to `https://risklens-api-qn0e.onrender.com/api/v1`.
+- Set Vercel `NEXT_PUBLIC_SOCKET_URL` to `https://risklens-api-qn0e.onrender.com`.
+- Set API `CLIENT_URL` to `https://risklens-client.vercel.app`.
 - Add Vercel preview domains to API `CLIENT_URLS` only if preview deployments need API access.
 - Use `COOKIE_SAME_SITE=none` for cross-site frontend/backend deployments. Leave `COOKIE_DOMAIN` empty unless both apps share a parent custom domain.
 - Use a production `JWT_SECRET` with at least 32 characters.
 - Rotate all local development secrets before deployment.
+- Render free instances can sleep after inactivity, so the first request after a cold start can be slower. CSV workers resume when the web service wakes.
 
 ---
 

@@ -13,7 +13,7 @@ import { Trade } from "../modules/trades/trade.model.js";
 import { addDays, startOfUtcDay } from "../utils/date.js";
 
 const demoEmail = process.env.SEED_DEMO_EMAIL ?? "demo@risklens.dev";
-const demoPassword = process.env.SEED_DEMO_PASSWORD ?? "risklens123";
+const demoPassword = process.env.SEED_DEMO_PASSWORD ?? "RiskLensDemo123!";
 
 async function main(): Promise<void> {
   if (env.NODE_ENV === "production" && (!process.env.SEED_DEMO_EMAIL || !process.env.SEED_DEMO_PASSWORD)) {
