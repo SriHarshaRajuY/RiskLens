@@ -168,6 +168,13 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new ApiError(408, "REQUEST_TIMEOUT", "The request timed out. Please retry.");
     }
+    if (error instanceof TypeError && /failed to fetch/i.test(error.message)) {
+      throw new ApiError(
+        0,
+        "NETWORK_ERROR",
+        "The API did not respond. Check that the backend server is running and the frontend API URL points to it."
+      );
+    }
     throw error;
   } finally {
     globalThis.clearTimeout(timeout);

@@ -4,12 +4,22 @@ import { logger } from "./logger.js";
 
 let redisClient: Redis | null = null;
 
+function normalizedRedisUrl(): string {
+  return env.REDIS_URL.trim().replace(/^redis-cli\s+--tls\s+-u\s+/i, "");
+}
+
+function requiresTls(redisUrl: string): boolean {
+  return redisUrl.startsWith("rediss://") || /upstash\.io/i.test(redisUrl);
+}
+
 export function createRedisConnection(connectionName = "risklens"): Redis {
-  const client = new Redis(env.REDIS_URL, {
+  const redisUrl = normalizedRedisUrl();
+  const client = new Redis(redisUrl, {
     connectionName,
     maxRetriesPerRequest: null,
     enableReadyCheck: false,
-    lazyConnect: true
+    lazyConnect: true,
+    ...(requiresTls(redisUrl) ? { tls: {} } : {})
   });
 
   client.on("connect", () => {

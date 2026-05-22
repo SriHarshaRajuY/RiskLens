@@ -21,12 +21,12 @@ const capabilities = [
   }
 ];
 
-const engineeringSignals = [
-  ["API layer", "Express REST API, validation middleware, typed responses"],
-  ["Data layer", "MongoDB models, ownership checks, portfolio-level indexes"],
-  ["Async layer", "BullMQ queues for CSV imports, alerts, snapshots, and warmups"],
-  ["Realtime", "Socket.IO events for uploads, notifications, and activity"],
-  ["Security", "HttpOnly auth cookies, CSRF checks, rate limits, and Helmet"]
+const platformHighlights = [
+  ["Secure access", "Protected workspaces with secure session handling and request validation"],
+  ["Portfolio records", "Organized portfolios, trades, holdings, activity, and alerts in one workspace"],
+  ["Async imports", "CSV uploads are processed in the background with progress updates"],
+  ["Live updates", "Realtime notifications keep uploads, alerts, and activity in sync"],
+  ["Risk visibility", "Clear risk metrics help users understand exposure without trading-bot complexity"]
 ];
 
 export default function LandingPage() {
@@ -66,8 +66,8 @@ export default function LandingPage() {
             <Badge className="mb-6 bg-white/10 text-teal-100">Full-stack portfolio analytics</Badge>
             <h1 className="max-w-3xl text-5xl font-semibold tracking-normal md:text-7xl">RiskLens</h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-              A production-minded MERN and Next.js platform for portfolio tracking, risk alerts, async CSV ingestion,
-              Redis caching, worker orchestration, and realtime analytics.
+              A focused portfolio analytics workspace for tracking trades, monitoring risk, uploading CSV history,
+              receiving alerts, and understanding portfolio performance from one clean dashboard.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="default" className="bg-teal-400 text-slate-950 hover:bg-teal-300">
@@ -86,8 +86,8 @@ export default function LandingPage() {
             <div className="rounded-md border border-white/10 bg-slate-950 p-5">
               <div className="flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-white">Portfolio overview</p>
-                  <p className="mt-1 text-xs text-slate-400">Live analytics workspace</p>
+                  <p className="text-sm font-semibold text-white">Example dashboard preview</p>
+                  <p className="mt-1 text-xs text-slate-400">Portfolio analytics workspace</p>
                 </div>
                 <div className="flex gap-2 text-xs">
                   <span className="rounded-md bg-emerald-400/15 px-2 py-1 text-emerald-200">Low risk</span>
@@ -159,15 +159,15 @@ export default function LandingPage() {
       <section id="architecture" className="px-6 py-16">
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[360px_1fr]">
           <div>
-            <p className="text-sm font-medium text-teal-200">Engineering signals</p>
-            <h2 className="mt-3 text-3xl font-semibold">Designed for backend-heavy SDE review</h2>
+            <p className="text-sm font-medium text-teal-200">Platform workflow</p>
+            <h2 className="mt-3 text-3xl font-semibold">Built for clear portfolio decisions</h2>
             <p className="mt-4 text-sm leading-6 text-slate-300">
-              The project stays a modular monolith, but separates auth, portfolios, trades, analytics, alerts,
-              queues, notifications, and observability into clear backend modules.
+              RiskLens connects portfolio setup, trade ingestion, analytics, risk alerts, notifications, and activity
+              history so users can move from raw trades to actionable portfolio context.
             </p>
           </div>
           <div className="grid gap-3">
-            {engineeringSignals.map(([title, description], index) => {
+            {platformHighlights.map(([title, description], index) => {
               const icons = [DatabaseZap, Layers3, RadioTower, LockKeyhole, LineChart];
               const Icon = icons[index] ?? DatabaseZap;
               return (

@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import jwt, { type SignOptions } from "jsonwebtoken";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import { env } from "../../config/env.js";
 import { logger } from "../../config/logger.js";
 import { conflict, unauthorized } from "../../utils/errors.js";
@@ -145,8 +145,8 @@ export const authService = {
     const tokenHash = hashRefreshToken(refreshToken);
     const session = await Session.findOne({
       tokenHash,
-      revokedAt: { $exists: false },
-      expiresAt: { $gt: new Date() }
+      revokedAt: mongoose.trusted({ $exists: false }),
+      expiresAt: mongoose.trusted({ $gt: new Date() })
     });
 
     if (!session) {
@@ -157,7 +157,7 @@ export const authService = {
 
     const user = await User.findById(session.userId);
     if (!user) {
-      await Session.updateMany({ userId: session.userId, revokedAt: { $exists: false } }, { revokedAt: new Date() });
+      await Session.updateMany({ userId: session.userId, revokedAt: mongoose.trusted({ $exists: false }) }, { revokedAt: new Date() });
       throw unauthorized("User no longer exists");
     }
 
@@ -172,7 +172,10 @@ export const authService = {
 
   async logout(refreshToken?: string): Promise<void> {
     if (!refreshToken) return;
-    await Session.findOneAndUpdate({ tokenHash: hashRefreshToken(refreshToken), revokedAt: { $exists: false } }, { revokedAt: new Date() });
+    await Session.findOneAndUpdate(
+      { tokenHash: hashRefreshToken(refreshToken), revokedAt: mongoose.trusted({ $exists: false }) },
+      { revokedAt: new Date() }
+    );
   },
 
   async me(userId: string): Promise<PublicUser> {

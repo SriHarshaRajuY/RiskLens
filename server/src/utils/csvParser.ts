@@ -10,7 +10,8 @@ export async function parseCsv(csvContent: string): Promise<CsvRow[]> {
       headers: true,
       ignoreEmpty: true,
       trim: true,
-      renameHeaders: false
+      renameHeaders: false,
+      discardUnmappedColumns: true
     })
       .on("error", reject)
       .on("data", (row: CsvRow) => rows.push(normalizeRow(row)))
@@ -25,7 +26,8 @@ export async function parseCsvFile(filePath: string, onRow: (row: CsvRow, rowNum
       headers: true,
       ignoreEmpty: true,
       trim: true,
-      renameHeaders: false
+      renameHeaders: false,
+      discardUnmappedColumns: true
     });
 
     parser.on("error", reject);
@@ -45,7 +47,7 @@ export async function parseCsvFile(filePath: string, onRow: (row: CsvRow, rowNum
 
 function normalizeRow(row: CsvRow): CsvRow {
   return Object.entries(row).reduce<CsvRow>((normalized, [key, value]) => {
-    normalized[key.trim().toLowerCase()] = String(value ?? "").trim();
+    normalized[key.replace(/^\ufeff/, "").trim().toLowerCase()] = String(value ?? "").trim();
     return normalized;
   }, {});
 }

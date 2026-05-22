@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Portfolio } from "../portfolio/portfolio.model.js";
 import { analyticsService } from "../analytics/analytics.service.js";
 import { PortfolioSnapshot } from "./portfolioSnapshot.model.js";
@@ -11,7 +12,7 @@ export const snapshotService = {
     const previous = await PortfolioSnapshot.findOne({
       userId: input.userId,
       portfolioId: input.portfolioId,
-      date: { $lt: today }
+      date: mongoose.trusted({ $lt: today })
     }).sort({ date: -1 });
 
     const dailyReturn =

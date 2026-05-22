@@ -30,3 +30,7 @@ export function notFound(resource = "Resource"): AppError {
 export function conflict(code: string, message: string, details?: unknown): AppError {
   return new AppError(409, code, message, details);
 }
+
+export function serviceUnavailable(code: string, message: string, details?: unknown): AppError {
+  return new AppError(503, code, message, details);
+}

@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
+import multer from "multer";
 import { ZodError } from "zod";
 import { logger } from "../config/logger.js";
 import { AppError } from "../utils/errors.js";
@@ -16,10 +17,21 @@ export function notFoundMiddleware(req: Request, res: Response): void {
 function firstValidationMessage(error: ZodError): string {
   const flattened = error.flatten();
   const fieldError = Object.values(flattened.fieldErrors).find((messages) => messages?.[0])?.[0];
-  return fieldError ?? flattened.formErrors[0] ?? "Request validation failed";
+  return fieldError ?? flattened.formErrors[0] ?? "The request contains invalid data";
 }
 
 export function errorMiddleware(error: Error, req: Request, res: Response, _next: NextFunction): void {
+  if (error instanceof multer.MulterError) {
+    const tooLarge = error.code === "LIMIT_FILE_SIZE";
+    res.status(400).json({
+      success: false,
+      code: tooLarge ? "CSV_FILE_TOO_LARGE" : "UPLOAD_REJECTED",
+      message: tooLarge ? "CSV file must be 5 MB or smaller" : "CSV upload could not be accepted",
+      requestId: req.requestId
+    });
+    return;
+  }
+
   if (error instanceof ZodError) {
     res.status(400).json({
       success: false,

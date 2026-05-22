@@ -11,7 +11,10 @@ import { ACCESS_TOKEN_COOKIE, parseCookieHeader } from "../utils/cookies.js";
 
 const REALTIME_CHANNEL = "risklens:realtime";
 const INSTANCE_ID = randomUUID();
-const allowedSocketOrigins = [env.CLIENT_URL, ...(env.CLIENT_URLS?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? [])];
+const localSocketOrigins = env.NODE_ENV === "production" ? [] : ["http://localhost:3000", "http://127.0.0.1:3000"];
+const allowedSocketOrigins = Array.from(
+  new Set([env.CLIENT_URL, ...localSocketOrigins, ...(env.CLIENT_URLS?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? [])])
+);
 
 let io: Server | null = null;
 let realtimeSubscriber: Redis | null = null;

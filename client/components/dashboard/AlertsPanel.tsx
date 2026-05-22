@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,25 @@ export function AlertsPanel({ portfolioId }: { portfolioId: string }) {
     },
     onError: (error) => toast.error(getApiErrorMessage(error, "Could not create alert"))
   });
+  const deleteMutation = useMutation({
+    mutationFn: (alertId: string) =>
+      apiRequest(`/alerts/${alertId}`, {
+        method: "DELETE"
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["alerts", portfolioId] });
+      queryClient.invalidateQueries({ queryKey: ["activity", portfolioId] });
+      toast.success("Alert deleted");
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, "Could not delete alert"))
+  });
+
+  function confirmDelete(alert: RiskAlert): void {
+    const confirmed = window.confirm(
+      `Delete this ${alert.type.replaceAll("_", " ").toLowerCase()} alert?\n\nThis alert will stop monitoring the portfolio. Existing notifications will remain.`
+    );
+    if (confirmed) deleteMutation.mutate(alert._id);
+  }
 
   return (
     <Card>
@@ -82,12 +102,24 @@ export function AlertsPanel({ portfolioId }: { portfolioId: string }) {
             </div>
           ) : null}
           {(alertsQuery.data ?? []).map((alert) => (
-            <div key={alert._id} className="flex items-center justify-between rounded-md border p-3">
+            <div key={alert._id} className="flex items-center justify-between gap-3 rounded-md border p-3">
               <div>
                 <p className="text-sm font-medium">{alert.type.replaceAll("_", " ")}</p>
                 <p className="text-xs text-muted-foreground">{alert.threshold}% threshold</p>
               </div>
-              <Badge variant={alert.isActive ? "success" : "secondary"}>{alert.isActive ? "Active" : "Paused"}</Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant={alert.isActive ? "success" : "secondary"}>{alert.isActive ? "Active" : "Paused"}</Badge>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  aria-label={`Delete ${alert.type.replaceAll("_", " ").toLowerCase()} alert`}
+                  disabled={deleteMutation.isPending}
+                  onClick={() => confirmDelete(alert)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           ))}
         </div>

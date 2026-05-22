@@ -4,10 +4,51 @@ import { emitToUser } from "../../sockets/socketServer.js";
 import { activityService } from "../activity/activity.service.js";
 import { portfolioService } from "../portfolio/portfolio.service.js";
 import { enqueueCsvProcessing } from "../../queues/csvProcessing.queue.js";
-import { badRequest, notFound } from "../../utils/errors.js";
+import { badRequest, notFound, serviceUnavailable } from "../../utils/errors.js";
 import { UploadJob } from "./uploadJob.model.js";
 
-const ALLOWED_MIME_TYPES = new Set(["text/csv", "application/csv", "application/vnd.ms-excel", "application/octet-stream"]);
+const REQUIRED_CSV_HEADERS = ["date", "symbol", "side", "quantity", "price", "fees"];
+
+function normalizeHeader(header: string): string {
+  return header.replace(/^\ufeff/, "").trim().toLowerCase();
+}
+
+function validateCsvHeaders(csvContent: string): void {
+  const headerLine = csvContent
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(Boolean);
+
+  if (!headerLine) {
+    throw badRequest("EMPTY_CSV_UPLOAD", "CSV file is empty");
+  }
+
+  const headers = headerLine.split(",").map(normalizeHeader).filter(Boolean);
+  const missingHeaders = REQUIRED_CSV_HEADERS.filter((header) => !headers.includes(header));
+  const unsupportedHeaders = headers.filter((header) => !REQUIRED_CSV_HEADERS.includes(header));
+
+  if (missingHeaders.length > 0 || unsupportedHeaders.length > 0) {
+    throw badRequest("INVALID_CSV_HEADERS", `CSV columns must be exactly: ${REQUIRED_CSV_HEADERS.join(", ")}`, {
+      expectedHeaders: REQUIRED_CSV_HEADERS,
+      receivedHeaders: headers,
+      missingHeaders,
+      unsupportedHeaders
+    });
+  }
+}
+
+async function withTimeout<T>(operation: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timeout: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise<never>((_resolve, reject) => {
+    timeout = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([operation, timeoutPromise]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
 
 export const uploadService = {
   async startCsvUpload(input: {
@@ -22,16 +63,19 @@ export const uploadService = {
       throw badRequest("CSV_FILE_REQUIRED", "A CSV file is required");
     }
 
-    if (!input.file.originalname.toLowerCase().endsWith(".csv") || !ALLOWED_MIME_TYPES.has(input.file.mimetype)) {
+    if (!input.file.originalname.toLowerCase().endsWith(".csv")) {
       throw badRequest("INVALID_UPLOAD_TYPE", "Only CSV files are supported");
     }
 
-    if (input.file.size === 0 || input.file.buffer.toString("utf8", 0, Math.min(input.file.buffer.length, 256)).trim().length === 0) {
+    const csvContent = input.file.buffer.toString("utf8");
+
+    if (input.file.size === 0 || csvContent.slice(0, 256).trim().length === 0) {
       throw badRequest("EMPTY_CSV_UPLOAD", "CSV file is empty");
     }
 
+    validateCsvHeaders(csvContent);
+
     const checksum = createHash("sha256").update(input.file.buffer).digest("hex");
-    const csvContent = input.file.buffer.toString("utf8");
     const uploadJob = await UploadJob.create({
       userId: new Types.ObjectId(input.userId),
       portfolioId: new Types.ObjectId(input.portfolioId),
@@ -43,15 +87,35 @@ export const uploadService = {
       requestId: input.requestId
     });
 
-    const queueJobId = await enqueueCsvProcessing({
-      uploadJobId: uploadJob._id.toString(),
-      userId: input.userId,
-      portfolioId: input.portfolioId,
-      originalFileName: input.file.originalname,
-      fileSize: input.file.size,
-      checksum,
-      requestId: input.requestId
-    });
+    let queueJobId: string;
+    try {
+      queueJobId = await withTimeout(
+        enqueueCsvProcessing({
+          uploadJobId: uploadJob._id.toString(),
+          userId: input.userId,
+          portfolioId: input.portfolioId,
+          originalFileName: input.file.originalname,
+          fileSize: input.file.size,
+          checksum,
+          requestId: input.requestId
+        }),
+        8_000,
+        "CSV queue did not respond"
+      );
+    } catch (error) {
+      uploadJob.status = "FAILED";
+      uploadJob.failedAt = new Date();
+      uploadJob.rowErrors = [
+        {
+          row: 0,
+          code: "CSV_QUEUE_UNAVAILABLE",
+          message: error instanceof Error ? error.message : "CSV processing queue is unavailable"
+        }
+      ];
+      uploadJob.set("csvContent", undefined);
+      await uploadJob.save();
+      throw serviceUnavailable("CSV_QUEUE_UNAVAILABLE", "CSV upload queue is unavailable. Make sure Redis and the worker are running.");
+    }
 
     uploadJob.queueJobId = queueJobId;
     await uploadJob.save();

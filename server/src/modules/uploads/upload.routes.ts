@@ -15,9 +15,7 @@ const upload = multer({
     files: 1
   },
   fileFilter(_req, file, callback) {
-    const validName = file.originalname.toLowerCase().endsWith(".csv");
-    const validMime = ["text/csv", "application/csv", "application/vnd.ms-excel", "application/octet-stream"].includes(file.mimetype);
-    callback(null, validName && validMime);
+    callback(null, Boolean(file.originalname));
   }
 });
 

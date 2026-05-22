@@ -78,6 +78,8 @@ export default function DashboardPage() {
   }
 
   const summary = summaryQuery.data;
+  const hasTrades = (summary?.tradeCount ?? 0) > 0;
+  const loadingValue = summaryQuery.isLoading ? "Loading" : "—";
 
   return (
     <div className="space-y-6">
@@ -97,19 +99,19 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           title="Portfolio value"
-          value={summaryQuery.isLoading ? "Loading" : formatCurrency(summary?.totalPortfolioValue ?? 0)}
-          detail={summaryQuery.isLoading ? "Syncing analytics" : `${summary?.holdingsCount ?? 0} holdings`}
+          value={hasTrades ? formatCurrency(summary?.totalPortfolioValue ?? 0) : loadingValue}
+          detail={summaryQuery.isLoading ? "Loading analytics" : hasTrades ? `${summary?.holdingsCount ?? 0} holdings` : "Import trades to calculate"}
         />
         <MetricCard
           title="Total P&L"
-          value={summaryQuery.isLoading ? "Loading" : formatCurrency(summary?.totalPnl ?? 0)}
+          value={hasTrades ? formatCurrency(summary?.totalPnl ?? 0) : loadingValue}
           tone={(summary?.totalPnl ?? 0) >= 0 ? "good" : "bad"}
-          detail={summaryQuery.isLoading ? "Awaiting cache" : `Daily ${formatCurrency(summary?.dailyPnl ?? 0)}`}
+          detail={summaryQuery.isLoading ? "Loading analytics" : hasTrades ? `Daily ${formatCurrency(summary?.dailyPnl ?? 0)}` : "No P&L yet"}
         />
-        <MetricCard title="Realized P&L" value={summaryQuery.isLoading ? "Loading" : formatCurrency(summary?.realizedPnl ?? 0)} tone="neutral" />
+        <MetricCard title="Realized P&L" value={hasTrades ? formatCurrency(summary?.realizedPnl ?? 0) : loadingValue} tone="neutral" />
         <MetricCard
           title="Unrealized P&L"
-          value={summaryQuery.isLoading ? "Loading" : formatCurrency(summary?.unrealizedPnl ?? 0)}
+          value={hasTrades ? formatCurrency(summary?.unrealizedPnl ?? 0) : loadingValue}
           tone={(summary?.unrealizedPnl ?? 0) >= 0 ? "good" : "bad"}
         />
       </div>

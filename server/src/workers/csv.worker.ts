@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { Worker } from "bullmq";
+import mongoose from "mongoose";
 import { z } from "zod";
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
@@ -80,6 +81,12 @@ async function emitProgress(data: CsvProcessingJobData, payload: Record<string, 
     portfolioId: data.portfolioId,
     ...payload
   });
+}
+
+function processingFailureMessage(error: unknown): string {
+  if (!(error instanceof Error)) return "CSV processing failed. Please retry after checking the worker logs.";
+  if (error.message.length <= 180) return error.message;
+  return "CSV processing failed because the worker hit an internal processing error. Check the worker logs and retry the upload.";
 }
 
 export const csvWorker = new Worker<CsvProcessingJobData>(
@@ -237,7 +244,7 @@ export const csvWorker = new Worker<CsvProcessingJobData>(
 
       const existingKeys = await Trade.find({
         portfolioId: data.portfolioId,
-        idempotencyKey: { $in: validated.map((trade) => trade.key) }
+        idempotencyKey: mongoose.trusted({ $in: validated.map((trade) => trade.key) })
       })
         .select("idempotencyKey")
         .lean();
@@ -342,15 +349,17 @@ export const csvWorker = new Worker<CsvProcessingJobData>(
       );
     } catch (error) {
       metricsService.increment("failedUploads");
+      const failureMessage = processingFailureMessage(error);
       await UploadJob.findByIdAndUpdate(data.uploadJobId, {
         $set: {
           status: "FAILED",
           failedAt: new Date(),
+          invalidRows: 1,
           rowErrors: [
             {
               row: 0,
               code: "CSV_PROCESSING_FAILED",
-              message: error instanceof Error ? error.message : "CSV processing failed"
+              message: failureMessage
             }
           ]
         },
@@ -368,7 +377,7 @@ export const csvWorker = new Worker<CsvProcessingJobData>(
       await emitProgress(data, {
         status: "FAILED",
         progress: 100,
-        error: error instanceof Error ? error.message : "CSV processing failed"
+        error: failureMessage
       });
 
       throw error;

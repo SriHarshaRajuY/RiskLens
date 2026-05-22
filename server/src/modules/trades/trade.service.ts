@@ -1,4 +1,4 @@
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import { activityService } from "../activity/activity.service.js";
 import { portfolioService } from "../portfolio/portfolio.service.js";
 import { buildHoldings, replayTrades, type TradeLedgerEntry } from "../analytics/holdings.service.js";
@@ -33,7 +33,7 @@ async function validateLedger(userId: string, portfolioId: string, candidate?: T
   const existing = await Trade.find({
     userId,
     portfolioId,
-    ...(excludeTradeId ? { _id: { $ne: excludeTradeId } } : {})
+    ...(excludeTradeId ? { _id: mongoose.trusted({ $ne: excludeTradeId }) } : {})
   })
     .sort({ tradeDate: 1, createdAt: 1 })
     .lean();

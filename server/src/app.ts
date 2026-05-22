@@ -24,7 +24,10 @@ export const app = express();
 
 app.disable("x-powered-by");
 
-const allowedOrigins = [env.CLIENT_URL, ...(env.CLIENT_URLS?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? [])];
+const localClientOrigins = env.NODE_ENV === "production" ? [] : ["http://localhost:3000", "http://127.0.0.1:3000"];
+const allowedOrigins = Array.from(
+  new Set([env.CLIENT_URL, ...localClientOrigins, ...(env.CLIENT_URLS?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? [])])
+);
 
 app.use(requestIdMiddleware);
 app.use(

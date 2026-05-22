@@ -53,6 +53,24 @@ export default function PortfolioDetailPage() {
   });
 
   const summary = summaryQuery.data;
+  const hasTrades = (summary?.tradeCount ?? 0) > 0;
+  const loadingValue = summaryQuery.isLoading ? "Loading" : "—";
+
+  if (portfolioQuery.isError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Portfolio unavailable</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">This portfolio could not be loaded. It may have been deleted or you may not have access.</p>
+          <Button asChild>
+            <Link href="/dashboard/portfolios">Back to portfolios</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -70,12 +88,12 @@ export default function PortfolioDetailPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Value" value={summaryQuery.isLoading ? "Loading" : formatCurrency(summary?.totalPortfolioValue ?? 0)} />
-        <MetricCard title="Invested" value={summaryQuery.isLoading ? "Loading" : formatCurrency(summary?.totalInvestedAmount ?? 0)} />
-        <MetricCard title="Realized" value={summaryQuery.isLoading ? "Loading" : formatCurrency(summary?.realizedPnl ?? 0)} />
+        <MetricCard title="Value" value={hasTrades ? formatCurrency(summary?.totalPortfolioValue ?? 0) : loadingValue} />
+        <MetricCard title="Invested" value={hasTrades ? formatCurrency(summary?.totalInvestedAmount ?? 0) : loadingValue} />
+        <MetricCard title="Realized" value={hasTrades ? formatCurrency(summary?.realizedPnl ?? 0) : loadingValue} />
         <MetricCard
           title="Unrealized"
-          value={summaryQuery.isLoading ? "Loading" : formatCurrency(summary?.unrealizedPnl ?? 0)}
+          value={hasTrades ? formatCurrency(summary?.unrealizedPnl ?? 0) : loadingValue}
           tone={(summary?.unrealizedPnl ?? 0) >= 0 ? "good" : "bad"}
         />
       </div>
