@@ -163,7 +163,7 @@ export function TradeUploadBox({ portfolioId }: { portfolioId: string }) {
             ) : null}
             {queuedDelayVisible ? (
               <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                This upload is still queued. Make sure the worker process is running locally, or wait for the hosted worker to wake up on the free tier.
+                This upload is taking longer than usual. You can keep this page open or check import history for the latest status.
               </div>
             ) : null}
             {rowErrors.length > 0 ? (

@@ -137,19 +137,19 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         <div className="hidden lg:block">
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm">
             <ShieldCheck className="h-3.5 w-3.5" />
-            Secure portfolio workspace
+            Private portfolio access
           </div>
           <h1 className="mt-6 max-w-lg text-4xl font-semibold tracking-normal text-slate-950">
-            {isRegister ? "Create a clean analytics workspace." : "Return to your portfolio workspace."}
+            {isRegister ? "Create your portfolio workspace." : "Welcome back to your portfolio workspace."}
           </h1>
           <p className="mt-4 max-w-md text-sm leading-6 text-slate-600">
-            RiskLens keeps portfolio records, risk metrics, import activity, alerts, and notifications organized behind protected user sessions.
+            Keep trades, alerts, activity, and risk insights organized in one private workspace.
           </p>
           <div className="mt-8 grid max-w-md gap-3">
             {[
-              "HTTP-only auth cookies",
-              "Portfolio-scoped ownership checks",
-              "Validation on client and server"
+              "Your portfolio stays private",
+              "Trades and alerts stay organized",
+              "Clear checks before saving changes"
             ].map((item) => (
               <div key={item} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
@@ -168,7 +168,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             </div>
             <CardTitle>{isRegister ? "Create account" : "Sign in"}</CardTitle>
             <CardDescription>
-              {isRegister ? "Set up access to your portfolio analytics workspace." : "Use your RiskLens account credentials to continue."}
+              {isRegister ? "Create your account to start tracking portfolios." : "Enter your email and password to continue."}
             </CardDescription>
           </CardHeader>
           <CardContent>

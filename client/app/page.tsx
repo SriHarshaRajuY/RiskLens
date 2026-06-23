@@ -22,16 +22,16 @@ const capabilities = [
 
 const workflow = [
   ["Create portfolio", "Set up a dedicated workspace for trades, alerts, activity, and analytics."],
-  ["Import trades", "Upload CSV history or add trades manually with validation and ownership checks."],
+  ["Import trades", "Upload CSV history or add trades manually, with clear checks before records are saved."],
   ["Review analytics", "Monitor portfolio value, allocation, risk score, and alert-driven notifications."],
   ["Evaluate strategy", "Run simple backtests from historical price data without order execution."]
 ];
 
 const platform = [
-  ["API-first backend", "Versioned Express routes, Zod validation, structured errors, and protected resources."],
-  ["Async processing", "BullMQ workers process CSV imports and background analytics without blocking requests."],
-  ["Realtime state", "Socket.IO updates keep import progress, notifications, and activity feeds in sync."],
-  ["Cache-aware reads", "Redis cache-aside reads support frequently accessed portfolio summaries and risk views."]
+  ["Reliable workspace", "Portfolio data, alerts, imports, and activity stay organized in one secure place."],
+  ["Background imports", "Large CSV uploads can be processed while you continue reviewing the portfolio."],
+  ["Live progress", "Upload progress, notifications, and activity updates appear without needing to hunt for them."],
+  ["Fast review", "Portfolio summaries and risk views are designed to load quickly during repeated review."]
 ];
 
 function PreviewPanel() {
@@ -143,7 +143,7 @@ export default function LandingPage() {
               </Button>
             </div>
             <div className="mt-10 grid max-w-xl grid-cols-1 gap-3 text-sm text-slate-700 sm:grid-cols-3">
-              {["CSV imports", "Risk alerts", "Realtime updates"].map((item) => (
+              {["CSV imports", "Risk alerts", "Live updates"].map((item) => (
                 <div key={item} className="rounded-lg border border-slate-200 bg-white/75 px-4 py-3 shadow-sm">
                   {item}
                 </div>
@@ -202,7 +202,7 @@ export default function LandingPage() {
           <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-emerald-700">Platform</p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-normal text-slate-950">Built as a practical SaaS system</h2>
+              <h2 className="mt-3 text-3xl font-semibold tracking-normal text-slate-950">Built for day-to-day portfolio review</h2>
             </div>
             <Button asChild variant="outline" className="w-full bg-white sm:w-auto">
               <Link href="/register">Open workspace</Link>

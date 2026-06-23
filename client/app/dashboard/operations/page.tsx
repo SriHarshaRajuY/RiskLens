@@ -30,11 +30,11 @@ export default function OperationsPage() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Operations metrics</CardTitle>
+          <CardTitle>Workspace health</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            This page is available to admin users. Runtime metrics stay protected because they expose operational details.
+            This page is available to workspace administrators.
           </p>
         </CardContent>
       </Card>
@@ -48,9 +48,9 @@ export default function OperationsPage() {
     <div className="space-y-7">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm text-muted-foreground">Runtime visibility</p>
+          <p className="text-sm text-muted-foreground">Workspace health</p>
           <h1 className="text-3xl font-semibold">Operations</h1>
-          <p className="mt-1 text-sm text-muted-foreground">API latency, queue health, cache ratio, alerts, uploads, and notifications.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Review service health, import activity, alerts, uploads, and notifications.</p>
         </div>
         <Button className="w-full sm:w-auto" variant="outline" onClick={() => metricsQuery.refetch()} disabled={metricsQuery.isFetching}>
           <RefreshCw className="h-4 w-4" />
@@ -61,7 +61,7 @@ export default function OperationsPage() {
       {metricsQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading operations metrics...</p> : null}
       {metricsQuery.isError ? (
         <Card>
-          <CardContent className="p-5 text-sm text-muted-foreground">Metrics could not be loaded. Confirm the API and Redis are available.</CardContent>
+          <CardContent className="p-5 text-sm text-muted-foreground">Workspace health could not be loaded. Please refresh and try again.</CardContent>
         </Card>
       ) : null}
 
@@ -82,7 +82,7 @@ export default function OperationsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Queue health</CardTitle>
+              <CardTitle>Import queue health</CardTitle>
             </CardHeader>
             <CardContent>
               {queues.length === 0 ? <p className="text-sm text-muted-foreground">No queue metrics available yet.</p> : null}

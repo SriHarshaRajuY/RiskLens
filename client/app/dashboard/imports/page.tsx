@@ -90,7 +90,7 @@ export default function ImportsPage() {
   return (
     <div className="space-y-6">
       <WorkspaceHeader
-        eyebrow="CSV operations"
+        eyebrow="Import activity"
         title="Import history"
         description={activePortfolio ? `${activePortfolio.name} CSV import history.` : "CSV import history."}
         portfolios={portfolios}
@@ -114,7 +114,7 @@ export default function ImportsPage() {
           {uploadsQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading import history...</p> : null}
           {uploadsQuery.isError ? (
             <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-              Import history could not be loaded. Confirm the backend is running and retry.
+              Import history could not be loaded. Please refresh and try again.
             </div>
           ) : null}
           {!uploadsQuery.isLoading && !uploadsQuery.isError && (uploadsQuery.data ?? []).length === 0 ? (

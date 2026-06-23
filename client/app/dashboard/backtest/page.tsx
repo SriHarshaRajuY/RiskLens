@@ -159,7 +159,7 @@ export default function BacktestPage() {
               {active.dataSource === "fallback" ? (
                 <Card>
                   <CardContent className="p-4 text-sm text-muted-foreground">
-                    Price source: fallback data.
+                    Price source: estimated historical prices.
                   </CardContent>
                 </Card>
               ) : null}

@@ -184,7 +184,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
       throw new ApiError(
         0,
         "NETWORK_ERROR",
-        "The API did not respond. Check that the backend server is running and the frontend API URL points to it."
+        "RiskLens could not connect to the service. Please try again in a moment."
       );
     }
     throw error;
