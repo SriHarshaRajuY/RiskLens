@@ -13,6 +13,7 @@ const emptyStringToUndefined = (value: unknown): unknown =>
   typeof value === "string" && value.trim().length === 0 ? undefined : value;
 
 const optionalTrimmedString = z.preprocess(emptyStringToUndefined, z.string().trim().optional());
+const legacyMarketFallbackValue = (value: unknown): unknown => value === "demo" ? "fallback" : value;
 
 const envSchema = z
   .object({
@@ -34,9 +35,9 @@ const envSchema = z
     RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900000),
     RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
     AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
-    MARKET_DATA_PROVIDER: z.enum(["alpha_vantage", "demo"]).default("demo"),
+    MARKET_DATA_PROVIDER: z.preprocess(legacyMarketFallbackValue, z.enum(["alpha_vantage", "fallback"]).default("fallback")),
     ALPHA_VANTAGE_API_KEY: z.string().trim().optional().default(""),
-    MARKET_DATA_FALLBACK: z.enum(["demo", "none"]).default("demo"),
+    MARKET_DATA_FALLBACK: z.preprocess(legacyMarketFallbackValue, z.enum(["fallback", "none"]).default("fallback")),
     CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(45),
     CSV_BATCH_SIZE: z.coerce.number().int().positive().default(500)
   })

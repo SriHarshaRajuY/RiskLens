@@ -87,7 +87,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 border-r bg-white xl:block">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 border-r bg-white/95 shadow-sm xl:block">
         <div className="flex h-16 items-center gap-2 border-b px-5">
           <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <Activity className="h-5 w-5" />
@@ -147,8 +147,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             Logout
           </Button>
         </header>
-        <main className="mx-auto w-full max-w-[1480px] px-4 py-8 sm:px-6 lg:px-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">{children}</main>
       </div>
     </div>
   );
 }
+

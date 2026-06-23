@@ -28,13 +28,15 @@ function validateCsvHeaders(csvContent: string): void {
   const headers = headerLine.split(",").map(normalizeHeader).filter(Boolean);
   const missingHeaders = REQUIRED_CSV_HEADERS.filter((header) => !headers.includes(header));
   const unsupportedHeaders = headers.filter((header) => !REQUIRED_CSV_HEADERS.includes(header));
+  const duplicateHeaders = headers.filter((header, index) => headers.indexOf(header) !== index);
 
-  if (missingHeaders.length > 0 || unsupportedHeaders.length > 0) {
+  if (missingHeaders.length > 0 || unsupportedHeaders.length > 0 || duplicateHeaders.length > 0) {
     throw badRequest("INVALID_CSV_HEADERS", `CSV columns must be exactly: ${REQUIRED_CSV_HEADERS.join(", ")}`, {
       expectedHeaders: REQUIRED_CSV_HEADERS,
       receivedHeaders: headers,
       missingHeaders,
-      unsupportedHeaders
+      unsupportedHeaders,
+      duplicateHeaders
     });
   }
 }

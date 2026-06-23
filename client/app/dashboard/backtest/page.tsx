@@ -156,7 +156,7 @@ export default function BacktestPage() {
                 <MetricCard title="Trades" value={String(active.numberOfTrades)} />
               </div>
               <BacktestResultChart result={active} />
-              {active.dataSource === "demo" ? (
+              {active.dataSource === "fallback" ? (
                 <Card>
                   <CardContent className="p-4 text-sm text-muted-foreground">
                     Price source: fallback data.

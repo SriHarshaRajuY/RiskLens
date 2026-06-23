@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { apiRequest, clearCsrfToken, jsonBody, setCsrfToken } from "@/lib/api";
 import { disconnectSocket } from "@/lib/socket";
 import type { AuthPayload, User } from "@/types/auth";
@@ -14,28 +15,49 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const PUBLIC_ROUTES = new Set(["/", "/login", "/register"]);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isPublicRoute = PUBLIC_ROUTES.has(pathname ?? "/");
 
   useEffect(() => {
+    let cancelled = false;
+
+    if (isPublicRoute) {
+      setIsLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setIsLoading(true);
     apiRequest<AuthPayload>("/auth/me")
       .catch(async () => {
         const refreshed = await apiRequest<AuthPayload>("/auth/refresh", { method: "POST", skipAuthRefresh: true });
-        setCsrfToken(refreshed.csrfToken);
+        if (!cancelled) setCsrfToken(refreshed.csrfToken);
         return apiRequest<AuthPayload>("/auth/me");
       })
       .then((payload) => {
+        if (cancelled) return;
         setCsrfToken(payload.csrfToken);
         setUser(payload.user);
       })
       .catch(() => {
+        if (cancelled) return;
         clearCsrfToken();
         setUser(null);
       })
-      .finally(() => setIsLoading(false));
-  }, []);
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isPublicRoute]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

@@ -5,6 +5,11 @@ import { Notification } from "./notification.model.js";
 import { notFound } from "../../utils/errors.js";
 import { toObjectId } from "../../utils/objectId.js";
 
+function normalizedLimit(value: number | undefined, fallback: number): number {
+  if (value === undefined) return fallback;
+  return Number.isFinite(value) && value > 0 ? Math.min(Math.floor(value), 100) : fallback;
+}
+
 export const notificationService = {
   async create(input: {
     userId: Types.ObjectId | string;
@@ -28,7 +33,7 @@ export const notificationService = {
 
     return Notification.find(query)
       .sort({ createdAt: -1 })
-      .limit(Math.min(filters.limit ?? 50, 100))
+      .limit(normalizedLimit(filters.limit, 50))
       .lean();
   },
 

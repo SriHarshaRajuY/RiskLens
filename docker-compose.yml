@@ -1,19 +1,93 @@
 services:
-  api:
+  mongo:
+    image: mongo:7
+    container_name: risklens-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - risklens
+
+  redis:
+    image: redis:7-alpine
+    container_name: risklens-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - risklens
+
+  server:
     build:
       context: .
       dockerfile: server/Dockerfile
+    container_name: risklens-server
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      MONGODB_URI: mongodb://mongo:27017/risklens
+      REDIS_URL: redis://redis:6379
+      CLIENT_URL: http://localhost:3000
+      SERVER_URL: http://localhost:5000
+      COOKIE_SAME_SITE: lax
     ports:
       - "5000:5000"
-    env_file:
-      - server/.env
-  workers:
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - risklens
+
+  worker:
     build:
       context: .
       dockerfile: server/Dockerfile
+    container_name: risklens-worker
+    restart: unless-stopped
     command: ["npm", "run", "start:workers", "--workspace", "server"]
     env_file:
-      - server/.env
+      - .env.docker
+    environment:
+      NODE_ENV: development
+      MONGODB_URI: mongodb://mongo:27017/risklens
+      REDIS_URL: redis://redis:6379
+      CLIENT_URL: http://localhost:3000
+      SERVER_URL: http://localhost:5000
+      COOKIE_SAME_SITE: lax
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - risklens
+
   client:
     build:
       context: .
@@ -21,8 +95,23 @@ services:
       args:
         NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
         NEXT_PUBLIC_SOCKET_URL: http://localhost:5000
-    ports:
-      - "3000:3000"
+    container_name: risklens-client
+    restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
       NEXT_PUBLIC_SOCKET_URL: http://localhost:5000
+    ports:
+      - "3000:3000"
+    depends_on:
+      server:
+        condition: service_healthy
+    networks:
+      - risklens
+
+volumes:
+  mongo-data:
+  redis-data:
+
+networks:
+  risklens:
+    driver: bridge

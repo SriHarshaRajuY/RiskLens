@@ -72,8 +72,8 @@ const backtestResultSchema = new Schema(
     },
     dataSource: {
       type: String,
-      enum: ["alpha_vantage", "demo"],
-      default: "demo"
+      enum: ["alpha_vantage", "fallback"],
+      default: "fallback"
     },
     equityCurve: {
       type: [equityPointSchema],

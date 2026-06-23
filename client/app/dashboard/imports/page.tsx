@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCw, UploadCloud } from "lucide-react";
@@ -140,17 +141,34 @@ export default function ImportsPage() {
                 </TableHeader>
                 <TableBody>
                   {(uploadsQuery.data ?? []).map((job) => (
-                    <TableRow key={job._id}>
-                      <TableCell className="min-w-52 font-medium">{job.originalFileName}</TableCell>
-                      <TableCell>
-                        <Badge variant={statusVariant(job.status)}>{job.status.replaceAll("_", " ")}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">{job.totalRows}</TableCell>
-                      <TableCell className="text-right">{job.validRows}</TableCell>
-                      <TableCell className="text-right">{job.invalidRows}</TableCell>
-                      <TableCell className="text-right">{formatFileSize(job.fileSize)}</TableCell>
-                      <TableCell className="min-w-44 text-muted-foreground">{formatDate(job.createdAt)}</TableCell>
-                    </TableRow>
+                    <Fragment key={job._id}>
+                      <TableRow>
+                        <TableCell className="min-w-52 font-medium">{job.originalFileName}</TableCell>
+                        <TableCell>
+                          <Badge variant={statusVariant(job.status)}>{job.status.replaceAll("_", " ")}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">{job.totalRows}</TableCell>
+                        <TableCell className="text-right">{job.validRows}</TableCell>
+                        <TableCell className="text-right">{job.invalidRows}</TableCell>
+                        <TableCell className="text-right">{formatFileSize(job.fileSize)}</TableCell>
+                        <TableCell className="min-w-44 text-muted-foreground">{formatDate(job.createdAt)}</TableCell>
+                      </TableRow>
+                      {job.rowErrors?.length ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="bg-red-50/60 text-xs text-red-800">
+                            <div className="space-y-1">
+                              <p className="font-semibold">Import errors</p>
+                              {job.rowErrors.slice(0, 6).map((error, index) => (
+                                <p key={`${job._id}-${error.row}-${error.code}-${index}`}>
+                                  {error.row > 0 ? `Row ${error.row}: ` : ""}{error.message}
+                                </p>
+                              ))}
+                              {job.rowErrors.length > 6 ? <p>Showing 6 of {job.rowErrors.length} errors.</p> : null}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : null}
+                    </Fragment>
                   ))}
                 </TableBody>
               </Table>

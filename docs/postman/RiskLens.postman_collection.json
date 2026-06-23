@@ -1,0 +1,139 @@
+﻿{
+  "info": {
+    "name": "RiskLens API",
+    "description": "Postman collection for the RiskLens portfolio analytics API. Set baseUrl to http://localhost:5000/api/v1 or https://risklens-api-qn0e.onrender.com/api/v1. Auth can use HTTP-only cookies from login or a bearer token if provided manually.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api/v1" },
+    { "key": "portfolioId", "value": "replace_with_portfolio_id" },
+    { "key": "tradeId", "value": "replace_with_trade_id" },
+    { "key": "uploadJobId", "value": "replace_with_upload_job_id" },
+    { "key": "alertId", "value": "replace_with_alert_id" },
+    { "key": "notificationId", "value": "replace_with_notification_id" },
+    { "key": "backtestId", "value": "replace_with_backtest_id" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/register",
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"RiskLens User\",\n  \"email\": \"user@example.com\",\n  \"password\": \"StrongPassword123!\"\n}" }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"StrongPassword123!\"\n}" }
+          }
+        },
+        { "name": "Current User", "request": { "method": "GET", "url": "{{baseUrl}}/auth/me" } },
+        { "name": "Logout", "request": { "method": "POST", "url": "{{baseUrl}}/auth/logout" } }
+      ]
+    },
+    {
+      "name": "Portfolios",
+      "item": [
+        { "name": "List Portfolios", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios?limit=20" } },
+        {
+          "name": "Create Portfolio",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/portfolios",
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Long-Term Portfolio\",\n  \"description\": \"Core holdings and risk alerts\",\n  \"baseCurrency\": \"USD\"\n}" }
+          }
+        },
+        { "name": "Get Portfolio", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios/{{portfolioId}}" } },
+        {
+          "name": "Update Portfolio",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/portfolios/{{portfolioId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated Portfolio\",\n  \"description\": \"Updated description\",\n  \"baseCurrency\": \"USD\"\n}" }
+          }
+        },
+        { "name": "Delete Portfolio", "request": { "method": "DELETE", "url": "{{baseUrl}}/portfolios/{{portfolioId}}" } }
+      ]
+    },
+    {
+      "name": "Trades and Uploads",
+      "item": [
+        {
+          "name": "Create Trade",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/portfolios/{{portfolioId}}/trades",
+            "body": { "mode": "raw", "raw": "{\n  \"symbol\": \"AAPL\",\n  \"side\": \"BUY\",\n  \"quantity\": 10,\n  \"price\": 180,\n  \"fees\": 0,\n  \"tradeDate\": \"2025-01-01\"\n}" }
+          }
+        },
+        { "name": "List Trades", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios/{{portfolioId}}/trades?page=1&limit=20" } },
+        { "name": "Delete Trade", "request": { "method": "DELETE", "url": "{{baseUrl}}/trades/{{tradeId}}" } },
+        {
+          "name": "Upload Trades CSV",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/portfolios/{{portfolioId}}/trades/upload",
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": [] }] }
+          }
+        },
+        { "name": "List Upload Jobs", "request": { "method": "GET", "url": "{{baseUrl}}/uploads" } },
+        { "name": "Get Upload Job", "request": { "method": "GET", "url": "{{baseUrl}}/uploads/{{uploadJobId}}" } }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        { "name": "Portfolio Summary", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios/{{portfolioId}}/summary" } },
+        { "name": "Holdings", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios/{{portfolioId}}/holdings" } },
+        { "name": "Risk Metrics", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios/{{portfolioId}}/risk" } },
+        { "name": "Returns", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios/{{portfolioId}}/returns" } }
+      ]
+    },
+    {
+      "name": "Alerts and Notifications",
+      "item": [
+        {
+          "name": "Create Alert",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/portfolios/{{portfolioId}}/alerts",
+            "body": { "mode": "raw", "raw": "{\n  \"type\": \"CONCENTRATION\",\n  \"threshold\": 40\n}" }
+          }
+        },
+        { "name": "List Alerts", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios/{{portfolioId}}/alerts" } },
+        { "name": "Delete Alert", "request": { "method": "DELETE", "url": "{{baseUrl}}/alerts/{{alertId}}" } },
+        { "name": "List Notifications", "request": { "method": "GET", "url": "{{baseUrl}}/notifications" } },
+        { "name": "Mark Notification Read", "request": { "method": "PUT", "url": "{{baseUrl}}/notifications/{{notificationId}}/read" } }
+      ]
+    },
+    {
+      "name": "Backtests and Admin",
+      "item": [
+        {
+          "name": "Run Backtest",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/backtests",
+            "body": { "mode": "raw", "raw": "{\n  \"symbol\": \"AAPL\",\n  \"strategy\": \"MOVING_AVERAGE_CROSSOVER\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2025-01-01\",\n  \"initialCapital\": 10000,\n  \"shortWindow\": 20,\n  \"longWindow\": 50\n}" }
+          }
+        },
+        { "name": "List Backtests", "request": { "method": "GET", "url": "{{baseUrl}}/backtests" } },
+        { "name": "Runtime Metrics", "request": { "method": "GET", "url": "{{baseUrl}}/admin/metrics" } },
+        { "name": "Queue Metrics", "request": { "method": "GET", "url": "{{baseUrl}}/admin/queues" } }
+      ]
+    }
+  ]
+}

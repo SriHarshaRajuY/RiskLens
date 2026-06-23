@@ -86,7 +86,7 @@ export default function NotificationsPage() {
       />
       <Card>
         <CardHeader>
-        <CardTitle>{isPortfolioScoped && activePortfolio ? `${activePortfolio.name} inbox` : "Account inbox"}</CardTitle>
+          <CardTitle>{isPortfolioScoped && activePortfolio ? `${activePortfolio.name} inbox` : "Account inbox"}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {notificationsQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading notifications...</p> : null}
@@ -124,3 +124,5 @@ export default function NotificationsPage() {
     </div>
   );
 }
+
+

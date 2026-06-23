@@ -1,13 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { StarterPortfolioButton } from "@/components/dashboard/StarterPortfolioButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmAction } from "@/components/ui/confirm-action";
@@ -27,8 +27,11 @@ const schema = z.object({
 
 type Values = z.infer<typeof schema>;
 
+type EditingPortfolio = Values & { id: string };
+
 export default function PortfoliosPage() {
   const queryClient = useQueryClient();
+  const [editing, setEditing] = useState<EditingPortfolio | null>(null);
   const portfoliosQuery = useQuery({
     queryKey: ["portfolios"],
     queryFn: () => apiRequest<Portfolio[]>("/portfolios?limit=50")
@@ -58,6 +61,28 @@ export default function PortfoliosPage() {
     },
     onError: (error) => toast.error(getApiErrorMessage(error, "Could not create portfolio"))
   });
+  const updateMutation = useMutation({
+    mutationFn: (values: EditingPortfolio) =>
+      apiRequest<Portfolio>(`/portfolios/${values.id}`, {
+        method: "PUT",
+        body: jsonBody({
+          name: values.name,
+          description: values.description,
+          baseCurrency: values.baseCurrency
+        })
+      }),
+    onSuccess: (portfolio) => {
+      const portfolioId = mongoId(portfolio._id);
+      queryClient.invalidateQueries({ queryKey: ["portfolios"] });
+      if (portfolioId) {
+        queryClient.invalidateQueries({ queryKey: ["portfolio", portfolioId] });
+        queryClient.invalidateQueries({ queryKey: ["activity", portfolioId] });
+      }
+      setEditing(null);
+      toast.success("Portfolio updated");
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, "Could not update portfolio"))
+  });
   const deleteMutation = useMutation({
     mutationFn: (portfolioId: string) =>
       apiRequest(`/portfolios/${portfolioId}`, {
@@ -73,8 +98,29 @@ export default function PortfoliosPage() {
     onError: (error) => toast.error(getApiErrorMessage(error, "Could not delete portfolio"))
   });
 
+  function beginEdit(portfolio: Portfolio): void {
+    const portfolioId = mongoId(portfolio._id);
+    if (!portfolioId) return;
+    setEditing({
+      id: portfolioId,
+      name: portfolio.name,
+      description: portfolio.description ?? "",
+      baseCurrency: portfolio.baseCurrency
+    });
+  }
+
+  function saveEdit(): void {
+    if (!editing) return;
+    const parsed = schema.safeParse(editing);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "Fix portfolio details before saving");
+      return;
+    }
+    updateMutation.mutate({ ...parsed.data, id: editing.id });
+  }
+
   return (
-    <div className="grid items-start gap-8 xl:grid-cols-[410px_minmax(0,1fr)]">
+    <div className="grid items-start gap-6 lg:grid-cols-[380px_minmax(0,1fr)] xl:gap-8">
       <Card className="h-fit">
         <CardHeader>
           <CardTitle>Create portfolio</CardTitle>
@@ -113,48 +159,92 @@ export default function PortfoliosPage() {
             <p className="mt-1 text-sm leading-6 text-muted-foreground">Manage portfolios and open detailed analytics workspaces.</p>
           </div>
         </div>
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
           {(portfoliosQuery.data ?? []).map((portfolio) => {
             const portfolioId = mongoId(portfolio._id);
+            const isEditing = Boolean(portfolioId && editing?.id === portfolioId);
             return (
-              <Card key={portfolioId || portfolio.name} className="flex min-h-44 flex-col">
+              <Card key={portfolioId || portfolio.name} className="flex min-h-48 flex-col">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">{portfolio.name}</CardTitle>
-                  <CardDescription className="max-w-xl">{portfolio.description || "No description"}</CardDescription>
+                  {isEditing && editing ? (
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label>Name</Label>
+                        <Input value={editing.name} onChange={(event) => setEditing({ ...editing, name: event.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Description</Label>
+                        <Textarea value={editing.description ?? ""} onChange={(event) => setEditing({ ...editing, description: event.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Currency</Label>
+                        <select
+                          className="h-11 w-full rounded-md border bg-background px-3.5 text-sm outline-none transition focus:ring-2 focus:ring-ring"
+                          value={editing.baseCurrency}
+                          onChange={(event) => setEditing({ ...editing, baseCurrency: event.target.value as Values["baseCurrency"] })}
+                        >
+                          <option value="USD">USD</option>
+                          <option value="INR">INR</option>
+                        </select>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <CardTitle className="text-lg">{portfolio.name}</CardTitle>
+                      <CardDescription className="max-w-xl">{portfolio.description || "No description"}</CardDescription>
+                    </>
+                  )}
                 </CardHeader>
                 <CardContent className="mt-auto flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-sm font-medium text-muted-foreground">{portfolio.baseCurrency}</span>
                   <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                     {portfolioId ? (
-                      <>
-                        <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
-                          <Link href={`/dashboard/portfolios/${portfolioId}`}>
-                            Open
-                            <ArrowRight className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <ConfirmAction
-                          title="Delete portfolio?"
-                          description={portfolio.name}
-                          confirmLabel="Delete"
-                          variant="destructive"
-                          disabled={deleteMutation.isPending}
-                          onConfirm={() => deleteMutation.mutate(portfolioId)}
-                          trigger={(open) => (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full text-muted-foreground hover:text-destructive sm:w-auto"
-                              disabled={deleteMutation.isPending}
-                              onClick={open}
-                              aria-label={`Delete ${portfolio.name}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Delete
-                            </Button>
-                          )}
-                        />
-                      </>
+                      isEditing ? (
+                        <>
+                          <Button size="sm" className="w-full sm:w-auto" disabled={updateMutation.isPending} onClick={saveEdit}>
+                            <Check className="h-4 w-4" />
+                            Save
+                          </Button>
+                          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setEditing(null)}>
+                            <X className="h-4 w-4" />
+                            Cancel
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
+                            <Link href={`/dashboard/portfolios/${portfolioId}`}>
+                              Open
+                              <ArrowRight className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => beginEdit(portfolio)}>
+                            <Pencil className="h-4 w-4" />
+                            Edit
+                          </Button>
+                          <ConfirmAction
+                            title="Delete portfolio?"
+                            description={portfolio.name}
+                            confirmLabel="Delete"
+                            variant="destructive"
+                            disabled={deleteMutation.isPending}
+                            onConfirm={() => deleteMutation.mutate(portfolioId)}
+                            trigger={(open) => (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full text-muted-foreground hover:text-destructive sm:w-auto"
+                                disabled={deleteMutation.isPending}
+                                onClick={open}
+                                aria-label={`Delete ${portfolio.name}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete
+                              </Button>
+                            )}
+                          />
+                        </>
+                      )
                     ) : (
                       <Button variant="outline" size="sm" disabled>
                         Unavailable
@@ -172,27 +262,13 @@ export default function PortfoliosPage() {
                 <div>
                   <p className="text-sm font-medium">No portfolios yet</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Create a portfolio manually or start with a populated workspace.
+                    Create your first portfolio to start adding trades, uploading CSV history, and tracking analytics.
                   </p>
                 </div>
-                <StarterPortfolioButton variant="default" confirmBeforeCreate={false} />
               </CardContent>
             </Card>
           ) : null}
         </div>
-        {!portfoliosQuery.isLoading && (portfoliosQuery.data ?? []).length > 0 ? (
-          <Card>
-            <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-              <div>
-                <p className="text-sm font-semibold">Starter portfolio</p>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  Add a separate populated workspace with trades, snapshots, and alerts.
-                </p>
-              </div>
-              <StarterPortfolioButton />
-            </CardContent>
-          </Card>
-        ) : null}
       </div>
     </div>
   );

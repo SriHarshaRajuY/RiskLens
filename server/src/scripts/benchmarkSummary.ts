@@ -17,6 +17,7 @@ type ApiResponse<T> = {
 
 type Stats = {
   averageLatencyMs: number;
+  p50LatencyMs: number;
   p95LatencyMs: number;
   minLatencyMs: number;
   maxLatencyMs: number;
@@ -27,17 +28,22 @@ type BenchmarkContext = {
   server: Server;
 };
 
+function percentile(values: number[], p: number): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.ceil((p / 100) * sorted.length) - 1;
+  return sorted[Math.max(index, 0)] ?? sorted.at(-1) ?? 0;
+}
+
 function summarize(values: number[]): Stats {
   if (values.length === 0) {
     throw new Error("No benchmark samples were collected");
   }
 
-  const sorted = [...values].sort((a, b) => a - b);
   const average = values.reduce((total, value) => total + value, 0) / values.length;
-  const p95 = sorted[Math.ceil(sorted.length * 0.95) - 1] ?? sorted.at(-1) ?? 0;
   return {
     averageLatencyMs: Number(average.toFixed(2)),
-    p95LatencyMs: Number(p95.toFixed(2)),
+    p50LatencyMs: Number(percentile(values, 50).toFixed(2)),
+    p95LatencyMs: Number(percentile(values, 95).toFixed(2)),
     minLatencyMs: Number(Math.min(...values).toFixed(2)),
     maxLatencyMs: Number(Math.max(...values).toFixed(2))
   };
@@ -111,7 +117,7 @@ async function measure(baseUrl: string, pathName: string, token: string, iterati
 }
 
 async function getBenchmarkAccessToken(): Promise<string> {
-  const email = process.env.BENCHMARK_EMAIL ?? "demo@risklens.dev";
+  const email = process.env.BENCHMARK_EMAIL ?? "benchmark@risklens.local";
   const password = process.env.BENCHMARK_PASSWORD ?? "RiskLensDemo123!";
 
   try {
@@ -119,7 +125,7 @@ async function getBenchmarkAccessToken(): Promise<string> {
     return auth.accessToken;
   } catch (error) {
     throw new Error(
-      `Benchmark login failed for ${email}. Run npm run seed first, or set BENCHMARK_EMAIL and BENCHMARK_PASSWORD for an existing account. Cause: ${
+      `Benchmark login failed for ${email}. Set BENCHMARK_EMAIL and BENCHMARK_PASSWORD for an existing account with portfolio data. Cause: ${
         error instanceof Error ? error.message : String(error)
       }`
     );
@@ -141,7 +147,7 @@ async function main(): Promise<void> {
 
     const portfolioId = portfolios.data[0]?._id;
     if (!portfolioId) {
-      throw new Error("No portfolio found for the benchmark user. Run npm run seed first or create a portfolio with trades.");
+      throw new Error("No portfolio found for the benchmark user. Create a portfolio with trades before running the benchmark, or set BENCHMARK_EMAIL and BENCHMARK_PASSWORD for an account that already has portfolio data.");
     }
 
     const summaryPath = `/portfolios/${portfolioId}/summary`;
@@ -162,16 +168,17 @@ Endpoint: \`GET /api/v1/portfolios/${portfolioId}/summary\`
 
 Iterations per run: ${iterations}
 
-| Scenario | Average latency | p95 latency | Min | Max |
-| --- | ---: | ---: | ---: | ---: |
-| Cold cache | ${cold.averageLatencyMs} ms | ${cold.p95LatencyMs} ms | ${cold.minLatencyMs} ms | ${cold.maxLatencyMs} ms |
-| Warm Redis cache | ${warm.averageLatencyMs} ms | ${warm.p95LatencyMs} ms | ${warm.minLatencyMs} ms | ${warm.maxLatencyMs} ms |
+| Scenario | Average latency | p50 latency | p95 latency | Min | Max |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Cold cache | ${cold.averageLatencyMs} ms | ${cold.p50LatencyMs} ms | ${cold.p95LatencyMs} ms | ${cold.minLatencyMs} ms | ${cold.maxLatencyMs} ms |
+| Warm Redis cache | ${warm.averageLatencyMs} ms | ${warm.p50LatencyMs} ms | ${warm.p95LatencyMs} ms | ${warm.minLatencyMs} ms | ${warm.maxLatencyMs} ms |
 
 Notes:
 
 - Cold-cache measurements clear the summary cache key before every request.
 - Warm-cache measurements reuse the Redis cache populated by the first warm request.
 - These are local measurements from the currently configured machine and infrastructure.
+- Regenerate this file after changing cache TTLs, analytics code, infrastructure, or dataset size.
 `;
 
     await writeFile(path.resolve(process.cwd(), "..", "docs", "performance.md"), markdown);

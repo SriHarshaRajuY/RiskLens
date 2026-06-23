@@ -6,5 +6,10 @@ export const adminController = {
   async metrics(_req: Request, res: Response): Promise<Response> {
     const metrics = await adminService.metrics();
     return ok(res, metrics);
+  },
+
+  async queues(_req: Request, res: Response): Promise<Response> {
+    const queues = await adminService.queues();
+    return ok(res, queues);
   }
 };

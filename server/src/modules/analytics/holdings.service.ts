@@ -17,7 +17,7 @@ export type Holding = {
   quantity: number;
   averageBuyPrice: number;
   currentPrice: number;
-  priceSource: "alpha_vantage" | "demo";
+  priceSource: "alpha_vantage" | "fallback";
   marketValue: number;
   costBasis: number;
   realizedPnl: number;
@@ -127,7 +127,7 @@ export async function buildHoldings(trades: TradeLedgerEntry[], requestId?: stri
       quantity: round(holding.quantity, 4),
       averageBuyPrice: round(holding.averageBuyPrice, 4),
       currentPrice: round(currentPrice, 2),
-      priceSource: priceRecord?.source ?? "demo",
+      priceSource: priceRecord?.source ?? "fallback",
       marketValue: round(marketValue, 2),
       costBasis: round(costBasis, 2),
       realizedPnl: round(holding.realizedPnl, 2),

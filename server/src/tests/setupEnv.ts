@@ -7,5 +7,5 @@ process.env.JWT_ISSUER ??= "risklens-api-test";
 process.env.JWT_AUDIENCE ??= "risklens-web-test";
 process.env.CLIENT_URL ??= "http://localhost:3000";
 process.env.SERVER_URL ??= "http://localhost:5000";
-process.env.MARKET_DATA_PROVIDER ??= "demo";
-process.env.MARKET_DATA_FALLBACK ??= "demo";
+process.env.MARKET_DATA_PROVIDER ??= "fallback";
+process.env.MARKET_DATA_FALLBACK ??= "fallback";

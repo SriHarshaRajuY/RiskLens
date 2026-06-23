@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 
 type ConfirmActionProps = {
@@ -25,6 +25,8 @@ export function ConfirmAction({
   disabled
 }: ConfirmActionProps) {
   const [open, setOpen] = useState(false);
+  const titleId = useId();
+  const descriptionId = useId();
 
   useEffect(() => {
     if (!open) return;
@@ -50,16 +52,16 @@ export function ConfirmAction({
           <div
             role="dialog"
             aria-modal="true"
-            aria-labelledby="confirm-action-title"
-            aria-describedby={description ? "confirm-action-description" : undefined}
+            aria-labelledby={titleId}
+            aria-describedby={description ? descriptionId : undefined}
             className="w-full max-w-sm rounded-lg border bg-white p-5 shadow-2xl"
             onMouseDown={(event) => event.stopPropagation()}
           >
-            <h2 id="confirm-action-title" className="text-base font-semibold">
+            <h2 id={titleId} className="text-base font-semibold">
               {title}
             </h2>
             {description ? (
-              <p id="confirm-action-description" className="mt-2 text-sm text-muted-foreground">
+              <p id={descriptionId} className="mt-2 text-sm text-muted-foreground">
                 {description}
               </p>
             ) : null}
@@ -70,6 +72,7 @@ export function ConfirmAction({
               <Button
                 type="button"
                 variant={variant === "destructive" ? "destructive" : "default"}
+                disabled={disabled}
                 onClick={() => {
                   onConfirm();
                   setOpen(false);

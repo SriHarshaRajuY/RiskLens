@@ -53,6 +53,14 @@ export function TradeForm({ portfolioId }: { portfolioId: string }) {
       queryClient.invalidateQueries({ queryKey: ["returns", portfolioId] });
       queryClient.invalidateQueries({ queryKey: ["trades", portfolioId] });
       queryClient.invalidateQueries({ queryKey: ["activity", portfolioId] });
+      form.reset({
+        symbol: "",
+        side: "BUY",
+        quantity: undefined,
+        price: undefined,
+        fees: 0,
+        tradeDate: new Date().toISOString().slice(0, 10)
+      });
       toast.success("Trade added");
     },
     onError: (error) => toast.error(getApiErrorMessage(error, "Could not add trade"))

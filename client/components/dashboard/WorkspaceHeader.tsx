@@ -41,17 +41,17 @@ export function WorkspaceHeader({
   const showControls = showSwitcher || openHref || actions;
 
   return (
-    <div className={cn("flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between", className)}>
-      <div className="min-w-0 xl:max-w-[58%]">
+    <div className={cn("flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between", className)}>
+      <div className="min-w-0 lg:max-w-[58%]">
         <p className="text-sm font-medium text-muted-foreground">{eyebrow}</p>
         <h1 className="mt-1 break-words text-2xl font-semibold tracking-normal sm:text-3xl">{title}</h1>
         {description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p> : null}
       </div>
 
       {showControls ? (
-        <div className="flex w-full flex-col gap-3 rounded-lg border bg-card/90 p-3 shadow-sm xl:w-auto xl:flex-row xl:items-center">
+        <div className="flex w-full flex-col gap-3 rounded-lg border bg-card/95 p-3 shadow-sm lg:w-auto lg:flex-row lg:items-center">
           {showSwitcher ? (
-            <label className="flex min-w-0 flex-1 items-center gap-3 xl:min-w-[340px]">
+            <label className="flex min-w-0 flex-1 items-center gap-3 lg:min-w-[320px]">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
                 <BriefcaseBusiness className="h-4 w-4" />
               </span>
@@ -86,3 +86,4 @@ export function WorkspaceHeader({
     </div>
   );
 }
+

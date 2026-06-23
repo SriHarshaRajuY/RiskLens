@@ -6,3 +6,4 @@ import { adminController } from "./admin.controller.js";
 export const adminRoutes = Router();
 
 adminRoutes.get("/metrics", requireAuth, requireAdmin, asyncHandler(adminController.metrics));
+adminRoutes.get("/queues", requireAuth, requireAdmin, asyncHandler(adminController.queues));

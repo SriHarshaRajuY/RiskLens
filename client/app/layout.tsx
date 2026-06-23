@@ -13,10 +13,10 @@ export const metadata: Metadata = {
     template: "%s | RiskLens",
     default: "RiskLens"
   },
-  description: "Production-grade portfolio analytics and risk alert platform. Monitor performance, analyze asset allocation, and configure advanced risk thresholds.",
+  description: "Portfolio analytics and risk alerts for trade imports, holdings, allocation, notifications, and backtesting.",
   openGraph: {
     title: "RiskLens",
-    description: "Production-grade portfolio analytics and risk alert platform.",
+    description: "Portfolio analytics and risk alerts for trade imports, holdings, allocation, notifications, and backtesting.",
     siteName: "RiskLens",
     type: "website"
   }

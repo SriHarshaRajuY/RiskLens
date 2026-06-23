@@ -4,15 +4,16 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        secondary: "bg-muted text-foreground hover:bg-muted/80",
-        outline: "border bg-background hover:bg-muted hover:text-foreground",
-        ghost: "hover:bg-muted",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+        default: "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-[0.99]",
+        secondary: "bg-muted text-foreground hover:bg-muted/80 active:scale-[0.99]",
+        outline: "border bg-background shadow-sm hover:bg-muted hover:text-foreground active:scale-[0.99]",
+        ghost: "hover:bg-muted active:scale-[0.99]",
+        destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 active:scale-[0.99]",
+        link: "min-h-0 rounded-none px-0 font-semibold text-primary underline-offset-4 hover:underline"
       },
       size: {
         default: "h-11 px-5",

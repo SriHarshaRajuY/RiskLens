@@ -9,7 +9,6 @@ import { PerformanceChart } from "@/components/charts/PerformanceChart";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { RiskMetricsPanel } from "@/components/dashboard/RiskMetricsPanel";
 import { RiskScoreCard } from "@/components/dashboard/RiskScoreCard";
-import { StarterPortfolioButton } from "@/components/dashboard/StarterPortfolioButton";
 import { WorkspaceHeader } from "@/components/dashboard/WorkspaceHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,7 +80,6 @@ export default function DashboardPage() {
           <Button asChild>
             <Link href="/dashboard/portfolios">Create portfolio</Link>
           </Button>
-          <StarterPortfolioButton />
         </CardContent>
       </Card>
     );

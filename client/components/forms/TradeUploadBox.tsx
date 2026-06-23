@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, FileText, Loader2, Upload, XCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -40,6 +41,7 @@ export function TradeUploadBox({ portfolioId }: { portfolioId: string }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string>("");
   const [uploadJobId, setUploadJobId] = useState<string | null>(null);
+  const [queuedDelayVisible, setQueuedDelayVisible] = useState(false);
   const queryClient = useQueryClient();
   const progress = useUploadProgress(portfolioId);
   const uploadJobQuery = useQuery({
@@ -63,6 +65,7 @@ export function TradeUploadBox({ portfolioId }: { portfolioId: string }) {
     },
     onSuccess: (job) => {
       setUploadJobId(job._id);
+      setQueuedDelayVisible(false);
       toast.success("CSV upload queued for processing");
       queryClient.invalidateQueries({ queryKey: ["uploads"] });
     },
@@ -72,7 +75,7 @@ export function TradeUploadBox({ portfolioId }: { portfolioId: string }) {
   const displayStatus = progress?.status ?? uploadJobQuery.data?.status;
   const progressPercent = progress?.progress ?? (displayStatus === "COMPLETED" ? 100 : displayStatus === "PROCESSING" ? 50 : displayStatus === "QUEUED" ? 5 : 0);
   const currentJob = uploadJobQuery.data;
-  const firstRowError = currentJob?.rowErrors?.[0];
+  const rowErrors = currentJob?.rowErrors ?? [];
   const statusTone = displayStatus === "FAILED" ? "text-red-700" : displayStatus === "PARTIAL_FAILURE" ? "text-amber-700" : "text-muted-foreground";
   const statusIcon = useMemo(() => {
     if (displayStatus === "COMPLETED") return <CheckCircle2 className="h-4 w-4 text-emerald-700" />;
@@ -81,6 +84,15 @@ export function TradeUploadBox({ portfolioId }: { portfolioId: string }) {
     if (displayStatus) return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
     return <FileText className="h-4 w-4 text-muted-foreground" />;
   }, [displayStatus]);
+
+  useEffect(() => {
+    if (displayStatus !== "QUEUED") {
+      setQueuedDelayVisible(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setQueuedDelayVisible(true), 20_000);
+    return () => window.clearTimeout(timer);
+  }, [displayStatus, uploadJobId]);
 
   useEffect(() => {
     const status = displayStatus;
@@ -149,11 +161,28 @@ export function TradeUploadBox({ portfolioId }: { portfolioId: string }) {
                 {currentJob.totalRows ? ` from ${currentJob.totalRows} rows` : ""}.
               </p>
             ) : null}
-            {firstRowError ? (
-              <p className="mt-2 text-xs text-red-700">
-                {firstRowError.row > 0 ? `Row ${firstRowError.row}: ` : ""}
-                {firstRowError.message}
-              </p>
+            {queuedDelayVisible ? (
+              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                This upload is still queued. Make sure the worker process is running locally, or wait for the hosted worker to wake up on the free tier.
+              </div>
+            ) : null}
+            {rowErrors.length > 0 ? (
+              <div className="mt-3 rounded-md border border-red-100 bg-red-50 p-3 text-xs text-red-800">
+                <p className="font-semibold">Row errors</p>
+                <ul className="mt-2 space-y-1">
+                  {rowErrors.slice(0, 8).map((error, index) => (
+                    <li key={`${error.row}-${error.code}-${index}`}>
+                      {error.row > 0 ? `Row ${error.row}: ` : ""}{error.message}
+                    </li>
+                  ))}
+                </ul>
+                {rowErrors.length > 8 ? <p className="mt-2 text-red-700">Showing 8 of {rowErrors.length} errors. Open import history for the full status.</p> : null}
+              </div>
+            ) : null}
+            {uploadJobId ? (
+              <Button asChild variant="link" className="mt-2 h-auto p-0 text-xs">
+                <Link href="/dashboard/imports">View import history</Link>
+              </Button>
             ) : null}
           </div>
         ) : null}

@@ -45,7 +45,7 @@ const portfolioSnapshotSchema = new Schema(
     },
     source: {
       type: String,
-      enum: ["WORKER", "SEED", "MANUAL"],
+      enum: ["WORKER", "MANUAL"],
       default: "WORKER"
     }
   },

@@ -50,7 +50,7 @@ const tradeSchema = new Schema(
     },
     source: {
       type: String,
-      enum: ["MANUAL", "CSV", "SEED"],
+      enum: ["MANUAL", "CSV"],
       default: "MANUAL"
     },
     uploadJobId: {

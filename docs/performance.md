@@ -1,6 +1,6 @@
 # Performance Benchmark
 
-Generated: 2026-05-22T11:37:24.032Z
+Last generated: 2026-05-22T11:37:24.032Z
 
 Endpoint: `GET /api/v1/portfolios/6a0c36fd5d52e885690fcd17/summary`
 
@@ -13,6 +13,8 @@ Iterations per run: 20
 
 Notes:
 
+- These values are preserved from the last real local benchmark run.
 - Cold-cache measurements clear the summary cache key before every request.
 - Warm-cache measurements reuse the Redis cache populated by the first warm request.
-- These are local measurements from the currently configured machine and infrastructure.
+- The benchmark script now records average, p50, p95, min, and max latency. Re-run `npm run benchmark:summary` to regenerate this file with p50 values.
+- Local benchmark results depend on machine, network, database, Redis, dataset size, and market-data cache state. Do not treat them as universal production numbers.

@@ -7,7 +7,7 @@ import { round } from "../../utils/math.js";
 export type PricePoint = {
   date: string;
   close: number;
-  source: "alpha_vantage" | "demo";
+  source: "alpha_vantage" | "fallback";
 };
 
 export type LatestPrice = {
@@ -15,26 +15,26 @@ export type LatestPrice = {
   source: PricePoint["source"];
 };
 
-function symbolSeed(symbol: string): number {
+function symbolHash(symbol: string): number {
   return symbol.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
 }
 
-function demoPrice(symbol: string, date = new Date()): number {
-  const seed = symbolSeed(symbol);
+function fallbackPrice(symbol: string, date = new Date()): number {
+  const hash = symbolHash(symbol);
   const day = Math.floor(date.getTime() / 86400000);
-  const wave = Math.sin((day + seed) / 11) * 8 + Math.cos((day + seed) / 29) * 4;
-  return round(80 + (seed % 240) + wave, 2);
+  const wave = Math.sin((day + hash) / 11) * 8 + Math.cos((day + hash) / 29) * 4;
+  return round(80 + (hash % 240) + wave, 2);
 }
 
-function demoHistory(symbol: string, startDate: Date, endDate: Date): PricePoint[] {
+function fallbackHistory(symbol: string, startDate: Date, endDate: Date): PricePoint[] {
   const points: PricePoint[] = [];
   for (let cursor = new Date(startDate); cursor <= endDate; cursor = addDays(cursor, 1)) {
     const day = cursor.getUTCDay();
     if (day === 0 || day === 6) continue;
     points.push({
       date: toDateOnlyString(cursor),
-      close: demoPrice(symbol, cursor),
-      source: "demo"
+      close: fallbackPrice(symbol, cursor),
+      source: "fallback"
     });
   }
   return points;
@@ -87,10 +87,15 @@ export const marketDataService = {
         await setCache(cacheKey, allPrices, { ttlSeconds: 60 * 60 * 12, requestId });
       } catch (error) {
         logger.warn(
-          { requestId, symbol: normalized, error },
-          "Market data provider failed; using deterministic demo prices"
+          { requestId, symbol: normalized, error, fallback: env.MARKET_DATA_FALLBACK },
+          env.MARKET_DATA_FALLBACK === "fallback"
+            ? "Market data provider failed; using deterministic fallback prices"
+            : "Market data provider failed and fallback pricing is disabled"
         );
-        allPrices = demoHistory(normalized, addDays(new Date(), -420), new Date());
+        if (env.MARKET_DATA_FALLBACK !== "fallback") {
+          throw error;
+        }
+        allPrices = fallbackHistory(normalized, addDays(new Date(), -420), new Date());
         await setCache(cacheKey, allPrices, { ttlSeconds: 60 * 15, requestId });
       }
     }
@@ -99,8 +104,8 @@ export const marketDataService = {
     const end = toDateOnlyString(endDate);
     const filtered = allPrices.filter((point) => point.date >= start && point.date <= end);
 
-    if (filtered.length === 0 && env.MARKET_DATA_FALLBACK === "demo") {
-      return demoHistory(normalized, startDate, endDate);
+    if (filtered.length === 0 && env.MARKET_DATA_FALLBACK === "fallback") {
+      return fallbackHistory(normalized, startDate, endDate);
     }
 
     return filtered;
@@ -110,8 +115,8 @@ export const marketDataService = {
     const history = await this.getHistoricalPrices(symbol, addDays(new Date(), -10), new Date(), requestId);
     const latest = history.at(-1);
     return {
-      price: latest?.close ?? demoPrice(symbol),
-      source: latest?.source ?? "demo"
+      price: latest?.close ?? fallbackPrice(symbol),
+      source: latest?.source ?? "fallback"
     };
   },
 

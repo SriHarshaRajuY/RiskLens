@@ -39,12 +39,18 @@ export function useActivePortfolio(portfolios?: Portfolio[]) {
   }, [activePortfolioId, validPortfolioIds]);
 
   useEffect(() => {
-    if (!resolvedActivePortfolioId) return;
+    if (!resolvedActivePortfolioId) {
+      if (activePortfolioId && validPortfolioIds.length === 0) {
+        clearActivePortfolioId(activePortfolioId);
+        setActivePortfolioIdState(undefined);
+      }
+      return;
+    }
     if (resolvedActivePortfolioId !== activePortfolioId) {
       persistActivePortfolioId(resolvedActivePortfolioId);
       setActivePortfolioIdState(resolvedActivePortfolioId);
     }
-  }, [activePortfolioId, resolvedActivePortfolioId]);
+  }, [activePortfolioId, resolvedActivePortfolioId, validPortfolioIds.length]);
 
   const setActivePortfolioId = useCallback((portfolioId: string) => {
     persistActivePortfolioId(portfolioId);

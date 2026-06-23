@@ -7,5 +7,5 @@ export type Trade = {
   price: number;
   fees: number;
   tradeDate: string;
-  source: "MANUAL" | "CSV" | "SEED";
+  source: "MANUAL" | "CSV";
 };

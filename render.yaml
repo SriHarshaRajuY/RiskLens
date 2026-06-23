@@ -35,8 +35,9 @@ services:
       - key: ALPHA_VANTAGE_API_KEY
         sync: false
       - key: MARKET_DATA_FALLBACK
-        value: demo
+        value: fallback
       - key: CACHE_TTL_SECONDS
         value: 45
       - key: CSV_BATCH_SIZE
         value: 500
+

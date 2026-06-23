@@ -1,154 +1,176 @@
 import Link from "next/link";
-import { Activity, ArrowRight, BellRing, DatabaseZap, Layers3, LineChart, LockKeyhole, RadioTower, UploadCloud } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Activity, ArrowRight, BarChart3, BellRing, DatabaseZap, LineChart, LockKeyhole, ShieldCheck, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const capabilities = [
   {
-    title: "Trade ingestion",
-    description: "Manual trade entry and async CSV processing with validation, row summaries, and worker progress.",
+    title: "Trade history intake",
+    description: "Import CSV trades or add records manually, then review validation status and import history.",
     icon: UploadCloud
   },
   {
-    title: "Risk analytics",
-    description: "Holdings, realized P&L, unrealized P&L, volatility, Sharpe ratio, drawdown, and VaR.",
+    title: "Portfolio analytics",
+    description: "Track holdings, allocation, realized P&L, unrealized P&L, returns, and risk metrics.",
     icon: LineChart
   },
   {
-    title: "Alert workflow",
-    description: "Portfolio thresholds, alert status, notifications, and activity are kept in one workspace.",
+    title: "Risk monitoring",
+    description: "Create portfolio thresholds for drawdown, concentration, volatility, and daily loss events.",
     icon: BellRing
   }
 ];
 
-const platformHighlights = [
-  ["Secure access", "Protected workspaces with secure session handling and request validation"],
-  ["Portfolio records", "Organized portfolios, trades, holdings, activity, and alerts in one workspace"],
-  ["Async imports", "CSV uploads are processed in the background with progress updates"],
-  ["Live updates", "Realtime notifications keep uploads, alerts, and activity in sync"],
-  ["Risk visibility", "Clear risk metrics help users understand exposure without trading-bot complexity"]
+const workflow = [
+  ["Create portfolio", "Set up a dedicated workspace for trades, alerts, activity, and analytics."],
+  ["Import trades", "Upload CSV history or add trades manually with validation and ownership checks."],
+  ["Review analytics", "Monitor portfolio value, allocation, risk score, and alert-driven notifications."],
+  ["Evaluate strategy", "Run simple backtests from historical price data without order execution."]
 ];
+
+const platform = [
+  ["API-first backend", "Versioned Express routes, Zod validation, structured errors, and protected resources."],
+  ["Async processing", "BullMQ workers process CSV imports and background analytics without blocking requests."],
+  ["Realtime state", "Socket.IO updates keep import progress, notifications, and activity feeds in sync."],
+  ["Cache-aware reads", "Redis cache-aside reads support frequently accessed portfolio summaries and risk views."]
+];
+
+function PreviewPanel() {
+  return (
+    <div className="pointer-events-none absolute inset-x-4 bottom-[-7rem] mx-auto max-w-6xl rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-[0_30px_90px_rgba(15,23,42,0.16)] backdrop-blur sm:bottom-[-8rem] sm:p-4 lg:right-8 lg:left-auto lg:w-[58rem]">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+        <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-slate-950">Portfolio workspace</p>
+            <p className="mt-1 text-xs text-slate-500">Holdings, risk, alerts, imports, and activity</p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs font-medium">
+            <span className="rounded-md bg-emerald-50 px-2.5 py-1 text-emerald-700">Risk monitored</span>
+            <span className="rounded-md bg-sky-50 px-2.5 py-1 text-sky-700">CSV ready</span>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-4">
+          {["Portfolio value", "Total P&L", "Risk score", "Unread alerts"].map((label) => (
+            <div key={label} className="rounded-lg border border-slate-200 bg-white p-3">
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500">{label}</p>
+              <div className="mt-3 h-6 rounded bg-slate-100" />
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 grid gap-3 lg:grid-cols-[1.4fr_0.8fr]">
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-sm font-semibold text-slate-900">Portfolio value</p>
+              <BarChart3 className="h-4 w-4 text-emerald-700" />
+            </div>
+            <div className="flex h-40 items-end gap-2" aria-hidden="true">
+              {[42, 48, 46, 58, 55, 67, 63, 72, 70, 78, 74, 82].map((height, index) => (
+                <div key={index} className="flex-1 rounded-t bg-emerald-600/70" style={{ height: `${height}%` }} />
+              ))}
+            </div>
+          </div>
+          <div className="grid gap-3">
+            {["Holdings", "Risk alerts", "Import activity"].map((label) => (
+              <div key={label} className="rounded-lg border border-slate-200 bg-white p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-900">{label}</p>
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                </div>
+                <div className="mt-3 space-y-2">
+                  <div className="h-2 rounded bg-slate-100" />
+                  <div className="h-2 w-2/3 rounded bg-slate-100" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-slate-950/90 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300">
-            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-teal-400 text-slate-950">
-              <Activity className="h-4 w-4" />
+    <main className="min-h-screen bg-[#f5f7f2] text-slate-950">
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-[#f5f7f2]/90 backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Link href="/" className="flex items-center gap-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-700 text-white shadow-sm">
+              <Activity className="h-5 w-5" />
             </span>
             RiskLens
           </Link>
-          <nav className="hidden items-center gap-6 text-sm text-slate-300 md:flex" aria-label="Landing navigation">
-            <a href="#features" className="transition-colors hover:text-white">
-              Features
-            </a>
-            <a href="#architecture" className="transition-colors hover:text-white">
-              Architecture
-            </a>
+          <nav className="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex" aria-label="Primary navigation">
+            <a href="#capabilities" className="transition-colors hover:text-slate-950">Capabilities</a>
+            <a href="#workflow" className="transition-colors hover:text-slate-950">Workflow</a>
+            <a href="#platform" className="transition-colors hover:text-slate-950">Platform</a>
           </nav>
           <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" className="text-slate-200 hover:bg-white/10 hover:text-white">
+            <Button asChild variant="ghost" className="hidden sm:inline-flex">
               <Link href="/login">Sign in</Link>
             </Button>
-            <Button asChild className="bg-teal-400 text-slate-950 hover:bg-teal-300">
+            <Button asChild>
               <Link href="/register">Create account</Link>
             </Button>
           </div>
         </div>
       </header>
 
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 dashboard-grid opacity-25" />
-        <div className="relative mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl items-center gap-12 px-6 py-16 lg:grid-cols-[0.95fr_1.05fr]">
-          <div>
-            <Badge className="mb-6 bg-white/10 text-teal-100">Portfolio analytics platform</Badge>
-            <h1 className="max-w-3xl text-5xl font-semibold tracking-normal md:text-7xl">RiskLens</h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-              A focused portfolio analytics workspace for tracking trades, monitoring risk, uploading CSV history,
-              receiving alerts, and understanding portfolio performance from one clean dashboard.
+      <section className="relative min-h-[88svh] overflow-hidden border-b border-slate-200 bg-[radial-gradient(circle_at_15%_20%,rgba(16,185,129,0.16),transparent_28%),linear-gradient(135deg,#f5f7f2_0%,#eef5ed_48%,#f8fafc_100%)]">
+        <div className="absolute inset-0 dashboard-grid opacity-70" />
+        <div className="relative mx-auto flex min-h-[88svh] max-w-7xl items-start px-4 pb-48 pt-16 sm:px-6 sm:pb-56 sm:pt-20 lg:px-8 lg:pb-48">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Portfolio risk workspace
+            </div>
+            <h1 className="mt-7 text-5xl font-semibold tracking-normal text-slate-950 sm:text-6xl lg:text-7xl">
+              RiskLens
+            </h1>
+            <p className="mt-6 max-w-xl text-lg leading-8 text-slate-700">
+              Import trades, understand portfolio exposure, monitor risk thresholds, and review portfolio activity from one focused analytics workspace.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button asChild size="default" className="bg-teal-400 text-slate-950 hover:bg-teal-300">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Button asChild className="w-full sm:w-auto">
                 <Link href="/register">
                   Create account
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button asChild variant="outline" className="border-white/20 bg-white/5 text-white hover:bg-white/10">
+              <Button asChild variant="outline" className="w-full border-slate-300 bg-white/80 sm:w-auto">
                 <Link href="/login">Sign in</Link>
               </Button>
             </div>
-          </div>
-
-          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4 shadow-2xl">
-            <div className="rounded-md border border-white/10 bg-slate-950 p-5">
-              <div className="flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-white">Dashboard preview</p>
-                  <p className="mt-1 text-xs text-slate-400">Portfolio analytics workspace</p>
+            <div className="mt-10 grid max-w-xl grid-cols-1 gap-3 text-sm text-slate-700 sm:grid-cols-3">
+              {["CSV imports", "Risk alerts", "Realtime updates"].map((item) => (
+                <div key={item} className="rounded-lg border border-slate-200 bg-white/75 px-4 py-3 shadow-sm">
+                  {item}
                 </div>
-                <div className="flex gap-2 text-xs">
-                  <span className="rounded-md bg-emerald-400/15 px-2 py-1 text-emerald-200">Low risk</span>
-                  <span className="rounded-md bg-amber-400/15 px-2 py-1 text-amber-200">Alerts on</span>
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                {[
-                  ["Value", "$42.8k"],
-                  ["Total P&L", "+$3.4k"],
-                  ["VaR 95", "2.8%"]
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-md border border-white/10 bg-white/[0.04] p-3">
-                    <p className="text-xs text-slate-400">{label}</p>
-                    <p className="mt-2 text-xl font-semibold">{value}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-5 rounded-md border border-white/10 bg-white/[0.04] p-4">
-                <div className="flex h-44 items-end gap-2" aria-hidden="true">
-                  {[38, 44, 42, 58, 54, 68, 62, 76, 74, 88, 82, 94].map((height, index) => (
-                    <div key={index} className="flex-1 rounded-t bg-teal-300/80" style={{ height: `${height}%` }} />
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-3 md:grid-cols-2">
-                {[
-                  ["AAPL", "42.4%", "+$1,240"],
-                  ["MSFT", "31.8%", "+$880"]
-                ].map(([symbol, allocation, pnl]) => (
-                  <div key={symbol} className="flex items-center justify-between rounded-md border border-white/10 bg-white/[0.04] p-3 text-sm">
-                    <div>
-                      <p className="font-semibold">{symbol}</p>
-                      <p className="text-xs text-slate-400">{allocation} allocation</p>
-                    </div>
-                    <p className="text-emerald-200">{pnl}</p>
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
           </div>
         </div>
+        <PreviewPanel />
       </section>
 
-      <section id="features" className="border-t border-white/10 bg-slate-900/40 px-6 py-16">
+      <section id="capabilities" className="px-4 pb-16 pt-36 sm:px-6 sm:pt-44 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="max-w-2xl">
-            <p className="text-sm font-medium text-teal-200">Product capabilities</p>
-            <h2 className="mt-3 text-3xl font-semibold">Built around real portfolio workflows</h2>
+            <p className="text-sm font-semibold text-emerald-700">Capabilities</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-normal text-slate-950 sm:text-4xl">Everything needed for portfolio review</h2>
+            <p className="mt-4 text-sm leading-6 text-slate-600">RiskLens keeps trade records, analytics, alerting, and activity in one consistent workflow.</p>
           </div>
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {capabilities.map((item) => {
               const Icon = item.icon;
               return (
-                <article key={item.title} className="rounded-lg border border-white/10 bg-white/[0.04] p-5">
-                  <Icon className="h-5 w-5 text-teal-300" />
-                  <h3 className="mt-4 text-base font-semibold">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">{item.description}</p>
+                <article key={item.title} className="rounded-xl border border-slate-200 bg-white p-6 shadow-soft">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="mt-5 text-base font-semibold text-slate-950">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{item.description}</p>
                 </article>
               );
             })}
@@ -156,28 +178,48 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="architecture" className="px-6 py-16">
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[360px_1fr]">
+      <section id="workflow" className="border-y border-slate-200 bg-white px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
-            <p className="text-sm font-medium text-teal-200">Platform workflow</p>
-            <h2 className="mt-3 text-3xl font-semibold">Built for clear portfolio decisions</h2>
-            <p className="mt-4 text-sm leading-6 text-slate-300">
-              RiskLens connects portfolio setup, trade ingestion, analytics, risk alerts, notifications, and activity
-              history so users can move from raw trades to actionable portfolio context.
-            </p>
+            <p className="text-sm font-semibold text-emerald-700">Workflow</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-normal text-slate-950">From raw trades to risk context</h2>
+            <p className="mt-4 text-sm leading-6 text-slate-600">The app is designed around a practical review cycle: collect records, calculate analytics, monitor thresholds, and inspect changes.</p>
           </div>
-          <div className="grid gap-3">
-            {platformHighlights.map(([title, description], index) => {
-              const icons = [DatabaseZap, Layers3, RadioTower, LockKeyhole, LineChart];
+          <div className="grid gap-3 sm:grid-cols-2">
+            {workflow.map(([title, description], index) => (
+              <div key={title} className="rounded-xl border border-slate-200 bg-[#f8faf7] p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Step {index + 1}</p>
+                <h3 className="mt-3 text-base font-semibold text-slate-950">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="platform" className="px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-emerald-700">Platform</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-normal text-slate-950">Built as a practical SaaS system</h2>
+            </div>
+            <Button asChild variant="outline" className="w-full bg-white sm:w-auto">
+              <Link href="/register">Open workspace</Link>
+            </Button>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {platform.map(([title, description], index) => {
+              const icons = [DatabaseZap, UploadCloud, LockKeyhole, LineChart];
               const Icon = icons[index] ?? DatabaseZap;
               return (
-                <div key={title} className="flex gap-4 rounded-lg border border-white/10 bg-white/[0.04] p-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-teal-400/10 text-teal-200">
+                <div key={title} className="flex gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="font-semibold">{title}</p>
-                    <p className="mt-1 text-sm text-slate-300">{description}</p>
+                    <p className="font-semibold text-slate-950">{title}</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
                   </div>
                 </div>
               );

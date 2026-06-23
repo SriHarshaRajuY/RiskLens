@@ -209,13 +209,32 @@ export const csvWorker = new Worker<CsvProcessingJobData>(
         });
       });
 
+      const candidateKeySet = new Set(validCandidates.map((trade) => trade.key));
+      const existingKeys = await Trade.find({ portfolioId: portfolioObjectId })
+        .select("idempotencyKey")
+        .lean();
+      const existingKeySet = new Set(
+        existingKeys
+          .map((trade) => trade.idempotencyKey)
+          .filter((key): key is string => typeof key === "string" && candidateKeySet.has(key))
+      );
+      const uniqueCandidates = validCandidates.filter((trade) => {
+        if (!existingKeySet.has(trade.key)) return true;
+        errors.push({
+          row: trade.row,
+          code: "DUPLICATE_EXISTING_TRADE",
+          message: "Trade row already exists in this portfolio"
+        });
+        return false;
+      });
+
       const state = new Map<string, InternalHolding>();
       for (const holding of replayTrades(ledger)) {
         state.set(holding.symbol, holding);
       }
 
       const validated: ValidatedCsvTrade[] = [];
-      const orderedCandidates = [...validCandidates].sort((a, b) => {
+      const orderedCandidates = [...uniqueCandidates].sort((a, b) => {
         const dateDelta = a.ledgerEntry.tradeDate.getTime() - b.ledgerEntry.tradeDate.getTime();
         return dateDelta === 0 ? a.row - b.row : dateDelta;
       });
@@ -251,24 +270,7 @@ export const csvWorker = new Worker<CsvProcessingJobData>(
         }
       }
 
-      const candidateKeySet = new Set(validated.map((trade) => trade.key));
-      const existingKeys = await Trade.find({ portfolioId: portfolioObjectId })
-        .select("idempotencyKey")
-        .lean();
-      const existingKeySet = new Set(
-        existingKeys
-          .map((trade) => trade.idempotencyKey)
-          .filter((key): key is string => typeof key === "string" && candidateKeySet.has(key))
-      );
-      const insertable = validated.filter((trade) => {
-        if (!existingKeySet.has(trade.key)) return true;
-        errors.push({
-          row: trade.row,
-          code: "DUPLICATE_EXISTING_TRADE",
-          message: "Trade row already exists in this portfolio"
-        });
-        return false;
-      });
+      const insertable = validated;
 
       for (let index = 0; index < insertable.length; index += env.CSV_BATCH_SIZE) {
         const batch = insertable.slice(index, index + env.CSV_BATCH_SIZE).map((trade) => ({

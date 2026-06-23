@@ -9,19 +9,24 @@ export type Pagination = {
   sortOrder: 1 | -1;
 };
 
+function positiveNumber(value: unknown, fallback: number): number {
+  const parsed = Number(value ?? fallback);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 export function getPagination(
   req: Request,
   defaults?: Partial<Pagination>,
   allowedSortFields?: readonly string[]
 ): Pagination {
-  const page = Math.max(Number(req.query.page ?? defaults?.page ?? 1), 1);
-  const limit = Math.min(Math.max(Number(req.query.limit ?? defaults?.limit ?? 20), 1), 100);
+  const page = Math.max(Math.floor(positiveNumber(req.query.page, defaults?.page ?? 1)), 1);
+  const limit = Math.min(Math.max(Math.floor(positiveNumber(req.query.limit, defaults?.limit ?? 20)), 1), 100);
   const requestedSortBy = String(req.query.sortBy ?? defaults?.sortBy ?? (allowedSortFields?.[0] || "createdAt"));
-  
+
   if (allowedSortFields && allowedSortFields.length > 0 && !allowedSortFields.includes(requestedSortBy)) {
     throw badRequest("INVALID_SORT_FIELD", `Invalid sort field. Allowed fields: ${allowedSortFields.join(", ")}`);
   }
-  
+
   const sortBy = requestedSortBy;
   const sortDirection = String(req.query.sortOrder ?? defaults?.sortOrder ?? "desc");
   const sortOrder: 1 | -1 = sortDirection === "asc" || sortDirection === "1" ? 1 : -1;

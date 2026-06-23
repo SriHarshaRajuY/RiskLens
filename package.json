@@ -16,8 +16,8 @@
     "build": "node scripts/build-all.mjs",
     "test": "node scripts/run-workspace-script.mjs test server",
     "lint": "node scripts/lint-all.mjs",
-    "seed": "node scripts/run-workspace-script.mjs seed server",
-    "benchmark:summary": "node scripts/run-workspace-script.mjs benchmark:summary server"
+    "benchmark:summary": "node scripts/run-workspace-script.mjs benchmark:summary server",
+    "loadtest:summary": "node scripts/loadtest-summary.mjs"
   },
   "engines": {
     "node": ">=20.11.0",
