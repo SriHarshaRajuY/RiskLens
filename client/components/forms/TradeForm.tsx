@@ -106,7 +106,7 @@ export function TradeForm({ portfolioId }: { portfolioId: string }) {
             {form.formState.errors.tradeDate ? <p className="text-sm text-destructive">{form.formState.errors.tradeDate.message}</p> : null}
           </div>
           <Button type="submit" className="w-full sm:col-span-2" disabled={mutation.isPending}>
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4 mr-1.5" />
             Add trade
           </Button>
         </form>

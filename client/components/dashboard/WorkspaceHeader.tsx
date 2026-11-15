@@ -75,7 +75,7 @@ export function WorkspaceHeader({
             <Button asChild variant="outline" className="w-full shrink-0 justify-center lg:w-auto">
               <Link href={openHref}>
                 {openLabel}
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4 ml-1.5" />
               </Link>
             </Button>
           ) : null}

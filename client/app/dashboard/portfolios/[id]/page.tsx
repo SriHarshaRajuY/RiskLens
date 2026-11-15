@@ -198,7 +198,7 @@ export default function PortfolioDetailPage() {
         </div>
         <Button asChild variant="outline" className="w-full sm:w-auto">
           <Link href="/dashboard/portfolios">
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4 mr-1.5" />
             Portfolios
           </Link>
         </Button>
@@ -322,11 +322,11 @@ export default function PortfolioDetailPage() {
                               {isEditing ? (
                                 <>
                                   <Button size="sm" disabled={updateTradeMutation.isPending} onClick={saveTradeEdit}>
-                                    <Check className="h-4 w-4" />
+                                    <Check className="h-4 w-4 mr-1.5" />
                                     Save
                                   </Button>
                                   <Button variant="outline" size="sm" onClick={() => setEditingTrade(null)}>
-                                    <X className="h-4 w-4" />
+                                    <X className="h-4 w-4 mr-1.5" />
                                     Cancel
                                   </Button>
                                 </>

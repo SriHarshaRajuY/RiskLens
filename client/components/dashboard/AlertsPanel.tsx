@@ -121,11 +121,11 @@ export function AlertsPanel({ portfolioId }: { portfolioId: string }) {
         <CardTitle>Risk alerts</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="grid gap-4 lg:grid-cols-[1fr_140px_auto]">
-          <div className="space-y-2.5">
+        <div className="grid gap-4 sm:grid-cols-[1fr_140px_auto] sm:items-end">
+          <div className="space-y-2">
             <Label>Type</Label>
             <select
-              className="h-11 w-full rounded-md border bg-background px-3.5 text-sm font-medium outline-none transition focus:ring-2 focus:ring-ring"
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm font-medium outline-none transition focus:ring-2 focus:ring-ring"
               value={draft.type}
               onChange={(event) => setDraft({ ...draft, type: event.target.value as RiskAlert["type"] })}
             >
@@ -135,11 +135,11 @@ export function AlertsPanel({ portfolioId }: { portfolioId: string }) {
               <option value="VOLATILITY">Volatility</option>
             </select>
           </div>
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             <Label>Threshold %</Label>
-            <Input type="number" step="0.1" value={draft.threshold} onChange={(event) => setDraft({ ...draft, threshold: Number(event.target.value) })} />
+            <Input type="number" step="0.1" className="h-10" value={draft.threshold} onChange={(event) => setDraft({ ...draft, threshold: Number(event.target.value) })} />
           </div>
-          <Button type="button" className="self-end" disabled={createMutation.isPending} onClick={createAlert}>
+          <Button type="button" className="h-10 w-full sm:w-auto" disabled={createMutation.isPending} onClick={createAlert}>
             Create alert
           </Button>
         </div>
@@ -195,7 +195,7 @@ export function AlertsPanel({ portfolioId }: { portfolioId: string }) {
                   ) : (
                     <>
                       <Button variant="outline" size="sm" disabled={updateMutation.isPending} onClick={() => toggleAlert(alert)}>
-                        {alert.isActive ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                        {alert.isActive ? <Pause className="h-4 w-4 mr-1.5" /> : <Play className="h-4 w-4 mr-1.5" />}
                         {alert.isActive ? "Pause" : "Resume"}
                       </Button>
                       <Button
@@ -203,7 +203,7 @@ export function AlertsPanel({ portfolioId }: { portfolioId: string }) {
                         size="sm"
                         onClick={() => setEditing({ id: alert._id, type: alert.type, threshold: alert.threshold, isActive: alert.isActive })}
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Pencil className="h-4 w-4 mr-1.5" />
                         Edit
                       </Button>
                       <ConfirmAction

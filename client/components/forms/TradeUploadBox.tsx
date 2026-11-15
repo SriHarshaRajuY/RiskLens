@@ -139,7 +139,7 @@ export function TradeUploadBox({ portfolioId }: { portfolioId: string }) {
           }}
           disabled={mutation.isPending}
         >
-          <Upload className="h-4 w-4" />
+          <Upload className="h-4 w-4 mr-1.5" />
           {mutation.isPending ? "Queueing upload..." : "Upload trades"}
         </Button>
 

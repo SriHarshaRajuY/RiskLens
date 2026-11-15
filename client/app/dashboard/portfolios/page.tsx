@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmAction } from "@/components/ui/confirm-action";
@@ -120,7 +121,7 @@ export default function PortfoliosPage() {
   }
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[380px_minmax(0,1fr)] xl:gap-8">
+    <div className="grid items-start gap-6 lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)] xl:gap-8">
       <Card className="h-fit">
         <CardHeader>
           <CardTitle>Create portfolio</CardTitle>
@@ -145,8 +146,8 @@ export default function PortfoliosPage() {
                 <option value="INR">INR</option>
               </select>
             </div>
-            <Button type="submit" className="w-full sm:w-auto" disabled={createMutation.isPending}>
-              <Plus className="h-4 w-4" />
+            <Button type="submit" className="w-full" disabled={createMutation.isPending}>
+              <Plus className="h-4 w-4 mr-1.5" />
               Create portfolio
             </Button>
           </form>
@@ -159,12 +160,12 @@ export default function PortfoliosPage() {
             <p className="mt-1 text-sm leading-6 text-muted-foreground">Manage portfolios and open detailed analytics workspaces.</p>
           </div>
         </div>
-        <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
           {(portfoliosQuery.data ?? []).map((portfolio) => {
             const portfolioId = mongoId(portfolio._id);
             const isEditing = Boolean(portfolioId && editing?.id === portfolioId);
             return (
-              <Card key={portfolioId || portfolio.name} className="flex min-h-48 flex-col">
+              <Card key={portfolioId || portfolio.name} className="flex min-h-48 flex-col overflow-hidden">
                 <CardHeader className="pb-3">
                   {isEditing && editing ? (
                     <div className="space-y-3">
@@ -179,7 +180,7 @@ export default function PortfoliosPage() {
                       <div className="space-y-2">
                         <Label>Currency</Label>
                         <select
-                          className="h-11 w-full rounded-md border bg-background px-3.5 text-sm outline-none transition focus:ring-2 focus:ring-ring"
+                          className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:ring-2 focus:ring-ring"
                           value={editing.baseCurrency}
                           onChange={(event) => setEditing({ ...editing, baseCurrency: event.target.value as Values["baseCurrency"] })}
                         >
@@ -189,68 +190,81 @@ export default function PortfoliosPage() {
                       </div>
                     </div>
                   ) : (
-                    <>
-                      <CardTitle className="text-lg">{portfolio.name}</CardTitle>
-                      <CardDescription className="max-w-xl">{portfolio.description || "No description"}</CardDescription>
-                    </>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <CardTitle className="text-base font-semibold leading-snug line-clamp-2" title={portfolio.name}>
+                          {portfolio.name}
+                        </CardTitle>
+                        <CardDescription className="mt-1.5 line-clamp-2 text-xs leading-relaxed">
+                          {portfolio.description || "No description"}
+                        </CardDescription>
+                      </div>
+                      <Badge variant="secondary" className="shrink-0 text-xs font-semibold px-2 py-0.5">
+                        {portfolio.baseCurrency}
+                      </Badge>
+                    </div>
                   )}
                 </CardHeader>
-                <CardContent className="mt-auto flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">{portfolio.baseCurrency}</span>
-                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                    {portfolioId ? (
-                      isEditing ? (
-                        <>
-                          <Button size="sm" className="w-full sm:w-auto" disabled={updateMutation.isPending} onClick={saveEdit}>
-                            <Check className="h-4 w-4" />
-                            Save
-                          </Button>
-                          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setEditing(null)}>
-                            <X className="h-4 w-4" />
-                            Cancel
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
-                            <Link href={`/dashboard/portfolios/${portfolioId}`}>
-                              Open
-                              <ArrowRight className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => beginEdit(portfolio)}>
-                            <Pencil className="h-4 w-4" />
-                            Edit
-                          </Button>
-                          <ConfirmAction
-                            title="Delete portfolio?"
-                            description={portfolio.name}
-                            confirmLabel="Delete"
-                            variant="destructive"
-                            disabled={deleteMutation.isPending}
-                            onConfirm={() => deleteMutation.mutate(portfolioId)}
-                            trigger={(open) => (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="w-full text-muted-foreground hover:text-destructive sm:w-auto"
-                                disabled={deleteMutation.isPending}
-                                onClick={open}
-                                aria-label={`Delete ${portfolio.name}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                Delete
-                              </Button>
-                            )}
-                          />
-                        </>
-                      )
+                <CardContent className="mt-auto pt-3 border-t">
+                  {portfolioId ? (
+                    isEditing ? (
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" className="flex-1 h-9" disabled={updateMutation.isPending} onClick={saveEdit}>
+                          <Check className="h-4 w-4 mr-1.5" />
+                          Save
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-9 px-3" onClick={() => setEditing(null)}>
+                          <X className="h-4 w-4 mr-1.5" />
+                          Cancel
+                        </Button>
+                      </div>
                     ) : (
-                      <Button variant="outline" size="sm" disabled>
-                        Unavailable
-                      </Button>
-                    )}
-                  </div>
+                      <div className="flex items-center gap-2">
+                        <Button asChild size="sm" className="flex-1 h-8 text-xs font-medium">
+                          <Link href={`/dashboard/portfolios/${portfolioId}`}>
+                            Open
+                            <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+                          onClick={() => beginEdit(portfolio)}
+                          title="Edit portfolio"
+                        >
+                          <Pencil className="h-3.5 w-3.5 mr-1" />
+                          Edit
+                        </Button>
+                        <ConfirmAction
+                          title="Delete portfolio?"
+                          description={`Are you sure you want to delete "${portfolio.name}"? This action cannot be undone.`}
+                          confirmLabel="Delete"
+                          variant="destructive"
+                          disabled={deleteMutation.isPending}
+                          onConfirm={() => deleteMutation.mutate(portfolioId)}
+                          trigger={(open) => (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive hover:border-destructive/30"
+                              disabled={deleteMutation.isPending}
+                              onClick={open}
+                              title={`Delete ${portfolio.name}`}
+                              aria-label={`Delete ${portfolio.name}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span className="sr-only">Delete</span>
+                            </Button>
+                          )}
+                        />
+                      </div>
+                    )
+                  ) : (
+                    <Button variant="outline" size="sm" className="w-full h-8" disabled>
+                      Unavailable
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             );

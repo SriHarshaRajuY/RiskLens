@@ -147,7 +147,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               router.replace("/");
             }}
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-4 w-4 mr-1.5" />
             Logout
           </Button>
         </header>

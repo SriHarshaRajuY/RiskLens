@@ -139,8 +139,8 @@ export default function BacktestPage() {
                 <Input type="number" {...form.register("initialCapital")} aria-invalid={Boolean(form.formState.errors.initialCapital)} />
                 {form.formState.errors.initialCapital ? <p className="text-sm text-destructive">{form.formState.errors.initialCapital.message}</p> : null}
               </div>
-              <Button type="submit" className="w-full sm:w-auto" disabled={mutation.isPending}>
-                <Play className="h-4 w-4" />
+              <Button type="submit" className="w-full" disabled={mutation.isPending}>
+                <Play className="h-4 w-4 mr-1.5" />
                 Run backtest
               </Button>
             </form>

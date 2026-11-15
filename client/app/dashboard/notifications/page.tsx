@@ -101,19 +101,19 @@ export default function NotificationsPage() {
             </div>
           ) : null}
           {(notificationsQuery.data ?? []).map((item) => (
-            <div key={item._id} className="flex flex-col gap-3 rounded-md border p-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="flex items-center gap-2">
+            <div key={item._id} className="flex flex-col gap-3 rounded-md border p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
                   <p className="font-medium">{item.title}</p>
                   <Badge variant={item.isRead ? "secondary" : item.severity === "HIGH" ? "destructive" : item.severity === "MEDIUM" ? "warning" : "success"}>
                     {item.isRead ? "Read" : item.severity}
                   </Badge>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">{item.message}</p>
+                <p className="mt-1 break-words text-sm text-muted-foreground">{item.message}</p>
               </div>
               {!item.isRead ? (
-                <Button variant="outline" size="sm" onClick={() => markRead.mutate(item._id)}>
-                  <CheckCircle2 className="h-4 w-4" />
+                <Button variant="outline" size="sm" className="shrink-0 self-start sm:self-auto" onClick={() => markRead.mutate(item._id)}>
+                  <CheckCircle2 className="h-4 w-4 mr-1.5" />
                   Mark read
                 </Button>
               ) : null}
