@@ -66,6 +66,7 @@ const tradeSchema = new Schema(
 );
 
 tradeSchema.index({ userId: 1, portfolioId: 1, tradeDate: -1 });
+tradeSchema.index({ userId: 1, portfolioId: 1, tradeDate: 1, createdAt: 1 });
 tradeSchema.index({ portfolioId: 1, symbol: 1 });
 tradeSchema.index({ portfolioId: 1, tradeDate: 1 });
 tradeSchema.index({ portfolioId: 1, idempotencyKey: 1 }, { unique: true, sparse: true });

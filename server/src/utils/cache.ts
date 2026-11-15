@@ -11,9 +11,61 @@ type CacheOptions = {
   requestId?: string;
 };
 
+type CacheEntry = {
+  value: string;
+  expiresAt: number;
+};
+
 const inFlightComputations = new Map<string, Promise<unknown>>();
+const memoryCache = new Map<string, CacheEntry>();
+const MAX_MEMORY_ITEMS = 500;
+
+function getMemoryCache<T>(key: string): T | null {
+  const entry = memoryCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    memoryCache.delete(key);
+    return null;
+  }
+  try {
+    return JSON.parse(entry.value) as T;
+  } catch {
+    memoryCache.delete(key);
+    return null;
+  }
+}
+
+function setMemoryCache(key: string, value: unknown, ttlSeconds: number): void {
+  if (memoryCache.size >= MAX_MEMORY_ITEMS) {
+    const oldestKey = memoryCache.keys().next().value;
+    if (oldestKey) memoryCache.delete(oldestKey);
+  }
+  memoryCache.set(key, {
+    value: JSON.stringify(value),
+    expiresAt: Date.now() + ttlSeconds * 1000
+  });
+}
+
+function deleteMemoryByPattern(pattern: string): number {
+  const regex = new RegExp("^" + pattern.replace(/\*/g, ".*") + "$");
+  let deleted = 0;
+  for (const key of memoryCache.keys()) {
+    if (regex.test(key)) {
+      memoryCache.delete(key);
+      deleted++;
+    }
+  }
+  return deleted;
+}
 
 export async function getCache<T>(key: string, requestId?: string): Promise<T | null> {
+  const mem = getMemoryCache<T>(key);
+  if (mem !== null) {
+    metricsService.increment("cacheHits");
+    logger.debug({ requestId, cacheKey: key, hit: true, source: "memory" }, "Memory cache lookup");
+    return mem;
+  }
+
   if (!isRedisReady()) {
     return null;
   }
@@ -31,7 +83,9 @@ export async function getCache<T>(key: string, requestId?: string): Promise<T | 
 
     if (!raw) return null;
     try {
-      return JSON.parse(raw) as T;
+      const parsed = JSON.parse(raw) as T;
+      setMemoryCache(key, parsed, 60);
+      return parsed;
     } catch (error) {
       logger.warn({ requestId, cacheKey: key, error }, "Cache payload was malformed and will be evicted");
       await redis.del(key).catch(() => undefined);
@@ -44,12 +98,14 @@ export async function getCache<T>(key: string, requestId?: string): Promise<T | 
 }
 
 export async function setCache<T>(key: string, value: T, options?: CacheOptions): Promise<void> {
+  const ttlSeconds = options?.ttlSeconds ?? env.CACHE_TTL_SECONDS;
+  setMemoryCache(key, value, ttlSeconds);
+
   if (!isRedisReady()) {
     return;
   }
 
   try {
-    const ttlSeconds = options?.ttlSeconds ?? env.CACHE_TTL_SECONDS;
     const redis = getRedis();
 
     await Promise.race([
@@ -103,14 +159,16 @@ export async function withCache<T>(key: string, compute: () => Promise<T>, optio
 }
 
 export async function deleteByPattern(pattern: string, requestId?: string): Promise<number> {
+  const memoryDeleted = deleteMemoryByPattern(pattern);
+
   if (!isRedisReady()) {
-    return 0;
+    return memoryDeleted;
   }
 
   try {
     const redis = getRedis();
     let cursor = "0";
-    let deleted = 0;
+    let deleted = memoryDeleted;
 
     do {
       const [nextCursor, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 100);
@@ -124,7 +182,7 @@ export async function deleteByPattern(pattern: string, requestId?: string): Prom
     return deleted;
   } catch (error) {
     logger.warn({ requestId, pattern, error: error instanceof Error ? error.message : String(error) }, "Cache invalidation by pattern failed, skipping");
-    return 0;
+    return memoryDeleted;
   }
 }
 

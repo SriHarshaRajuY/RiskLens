@@ -44,11 +44,11 @@ async function fetchAlphaVantageDaily(symbol: string): Promise<PricePoint[]> {
   const url = new URL("https://www.alphavantage.co/query");
   url.searchParams.set("function", "TIME_SERIES_DAILY");
   url.searchParams.set("symbol", symbol);
-  url.searchParams.set("outputsize", "full");
+  url.searchParams.set("outputsize", "compact");
   url.searchParams.set("apikey", env.ALPHA_VANTAGE_API_KEY);
 
   const response = await fetch(url, {
-    signal: AbortSignal.timeout(6000)
+    signal: AbortSignal.timeout(2500)
   });
   if (!response.ok) {
     throw new Error(`Alpha Vantage request failed with ${response.status}`);

@@ -16,12 +16,36 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const PUBLIC_ROUTES = new Set(["/", "/login", "/register"]);
+const USER_STORAGE_KEY = "risklens_user";
+
+function getStoredUser(): User | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(USER_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeUser(user: User | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (user) {
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    } else {
+      localStorage.removeItem(USER_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage errors
+  }
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(getStoredUser);
   const isPublicRoute = PUBLIC_ROUTES.has(pathname ?? "/");
+  const [isLoading, setIsLoading] = useState(() => !getStoredUser() && !isPublicRoute);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,7 +57,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
     }
 
-    setIsLoading(true);
+    // Only set loading if we don't already have user data in state
+    if (!user) {
+      setIsLoading(true);
+    }
+
     apiRequest<AuthPayload>("/auth/me")
       .catch(async () => {
         const refreshed = await apiRequest<AuthPayload>("/auth/refresh", { method: "POST", skipAuthRefresh: true });
@@ -44,11 +72,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
         setCsrfToken(payload.csrfToken);
         setUser(payload.user);
+        storeUser(payload.user);
       })
       .catch(() => {
         if (cancelled) return;
         clearCsrfToken();
         setUser(null);
+        storeUser(null);
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -70,6 +100,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         setCsrfToken(payload.csrfToken);
         setUser(payload.user);
+        storeUser(payload.user);
+        setIsLoading(false);
       },
       async register(name: string, email: string, password: string) {
         const payload = await apiRequest<AuthPayload>("/auth/register", {
@@ -78,6 +110,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         setCsrfToken(payload.csrfToken);
         setUser(payload.user);
+        storeUser(payload.user);
+        setIsLoading(false);
       },
       async logout() {
         await apiRequest<{ loggedOut: boolean }>("/auth/logout", {
@@ -87,6 +121,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearCsrfToken();
         disconnectSocket();
         setUser(null);
+        storeUser(null);
+        setIsLoading(false);
       }
     }),
     [isLoading, user]

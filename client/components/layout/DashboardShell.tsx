@@ -50,7 +50,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     if (!isLoading && !user) router.replace("/login");
   }, [isLoading, router, user]);
 
-  if (isLoading || !user) {
+  if (isLoading && !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
         <div className="flex items-center gap-3">
@@ -59,6 +59,10 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         </div>
       </div>
     );
+  }
+
+  if (!user) {
+    return null;
   }
 
   const navigation = (
