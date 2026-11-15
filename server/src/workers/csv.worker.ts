@@ -438,3 +438,7 @@ csvWorker.on("failed", (job, error) => {
     "CSV worker job failed"
   );
 });
+
+csvWorker.on("error", (error) => {
+  logger.warn({ worker: "csv-processing", error: error.message }, "CSV worker connection error");
+});

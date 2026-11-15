@@ -7,6 +7,14 @@ import { closeRedis, getRedis } from "./config/redis.js";
 import { initSocketServer } from "./sockets/socketServer.js";
 import { isMainModule } from "./utils/runtime.js";
 
+process.on("uncaughtException", (error) => {
+  logger.warn({ error: error.message }, "Server process caught uncaughtException (preventing crash)");
+});
+
+process.on("unhandledRejection", (reason) => {
+  logger.warn({ reason: reason instanceof Error ? reason.message : String(reason) }, "Server process caught unhandledRejection (preventing crash)");
+});
+
 export async function startServer(): Promise<void> {
   await connectDb();
 

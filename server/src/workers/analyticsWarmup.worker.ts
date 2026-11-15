@@ -36,3 +36,7 @@ export const analyticsWarmupWorker = new Worker<AnalyticsWarmupJobData>(
 analyticsWarmupWorker.on("failed", (job, error) => {
   logger.error({ queueJobId: job?.id, requestId: job?.data.requestId, error }, "Analytics warmup job failed");
 });
+
+analyticsWarmupWorker.on("error", (error) => {
+  logger.warn({ worker: "analytics-warmup", error: error.message }, "Analytics warmup worker connection error");
+});

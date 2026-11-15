@@ -29,3 +29,7 @@ export const snapshotWorker = new Worker<SnapshotJobData>(
 snapshotWorker.on("failed", (job, error) => {
   logger.error({ queueJobId: job?.id, requestId: job?.data.requestId, error }, "Snapshot worker job failed");
 });
+
+snapshotWorker.on("error", (error) => {
+  logger.warn({ worker: "portfolio-snapshots", error: error.message }, "Snapshot worker connection error");
+});

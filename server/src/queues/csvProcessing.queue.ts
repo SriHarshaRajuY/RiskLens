@@ -1,4 +1,5 @@
 import { Queue } from "bullmq";
+import { logger } from "../config/logger.js";
 import { defaultJobOptions, queueConnection } from "./queueOptions.js";
 
 export type CsvProcessingJobData = {
@@ -14,6 +15,10 @@ export type CsvProcessingJobData = {
 export const csvProcessingQueue = new Queue<CsvProcessingJobData>("csv-processing", {
   connection: queueConnection,
   defaultJobOptions
+});
+
+csvProcessingQueue.on("error", (error) => {
+  logger.warn({ queue: "csv-processing", error: error.message }, "CSV processing queue connection error");
 });
 
 export async function enqueueCsvProcessing(data: CsvProcessingJobData): Promise<string> {

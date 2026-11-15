@@ -29,3 +29,7 @@ export const alertsWorker = new Worker<AlertEvaluationJobData>(
 alertsWorker.on("failed", (job, error) => {
   logger.error({ queueJobId: job?.id, requestId: job?.data.requestId, error }, "Alert worker job failed");
 });
+
+alertsWorker.on("error", (error) => {
+  logger.warn({ worker: "alert-evaluation", error: error.message }, "Alerts worker connection error");
+});
