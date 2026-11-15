@@ -1,11 +1,13 @@
 import { logger } from "./config/logger.js";
 import { startServer } from "./server.js";
-import { startWorkers } from "./workers/index.js";
+import { bootstrapWorkers } from "./workers/index.js";
 
 async function main(): Promise<void> {
   await startServer();
-  await startWorkers();
-  logger.info({ component: "runtime" }, "RiskLens API and workers started in single-service mode");
+  bootstrapWorkers().catch((error) => {
+    logger.warn({ error: error instanceof Error ? error.message : String(error) }, "Worker background loop error");
+  });
+  logger.info({ component: "runtime" }, "RiskLens API and worker supervisor started in single-service mode");
 }
 
 main().catch((error) => {

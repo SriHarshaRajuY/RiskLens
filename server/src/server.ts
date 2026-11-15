@@ -9,7 +9,20 @@ import { isMainModule } from "./utils/runtime.js";
 
 export async function startServer(): Promise<void> {
   await connectDb();
-  await getRedis().ping();
+
+  try {
+    const redis = getRedis();
+    await Promise.race([
+      redis.ping(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Redis ping timed out")), 3000))
+    ]);
+    logger.info({ component: "redis" }, "Redis ping succeeded");
+  } catch (error) {
+    logger.warn(
+      { component: "redis", error: error instanceof Error ? error.message : String(error) },
+      "Redis is unavailable on startup. RiskLens API will continue in degraded mode (direct DB queries, queue jobs paused)."
+    );
+  }
 
   const httpServer = createServer(app);
   initSocketServer(httpServer);

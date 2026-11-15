@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
-import { getRedis } from "../config/redis.js";
+import { getRedis, isRedisReady } from "../config/redis.js";
 import { conflict } from "./errors.js";
 
 type LockOptions = {
@@ -18,6 +18,10 @@ end
 `;
 
 export async function withDistributedLock<T>(key: string, work: () => Promise<T>, options: LockOptions = {}): Promise<T> {
+  if (!isRedisReady()) {
+    return await work();
+  }
+
   const redis = getRedis();
   const token = randomUUID();
   const ttlMs = options.ttlMs ?? 30_000;
@@ -25,19 +29,26 @@ export async function withDistributedLock<T>(key: string, work: () => Promise<T>
   const retryEveryMs = options.retryEveryMs ?? 75;
   const deadline = Date.now() + waitMs;
 
-  while (Date.now() <= deadline) {
-    const acquired = await redis.set(key, token, "PX", ttlMs, "NX");
-    if (acquired === "OK") {
-      try {
-        return await work();
-      } finally {
-        await redis.eval(RELEASE_LOCK_SCRIPT, 1, key, token).catch(() => undefined);
+  try {
+    while (Date.now() <= deadline) {
+      const acquired = await redis.set(key, token, "PX", ttlMs, "NX");
+      if (acquired === "OK") {
+        try {
+          return await work();
+        } finally {
+          await redis.eval(RELEASE_LOCK_SCRIPT, 1, key, token).catch(() => undefined);
+        }
       }
+      await sleep(retryEveryMs);
     }
-    await sleep(retryEveryMs);
-  }
 
-  throw conflict("RESOURCE_LOCK_TIMEOUT", "Another operation is updating this portfolio. Please retry shortly.");
+    throw conflict("RESOURCE_LOCK_TIMEOUT", "Another operation is updating this portfolio. Please retry shortly.");
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && (error as { code?: string }).code === "RESOURCE_LOCK_TIMEOUT") {
+      throw error;
+    }
+    return await work();
+  }
 }
 
 export function portfolioWriteLockKey(portfolioId: string): string {

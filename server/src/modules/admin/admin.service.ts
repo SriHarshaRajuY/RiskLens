@@ -45,45 +45,52 @@ const queueDescriptors: QueueDescriptor[] = [
 ];
 
 async function queueStats() {
-  const entries = await Promise.all(
-    queueDescriptors.map(async ({ name, queue }) => [
-      name,
-      await queue.getJobCounts("waiting", "active", "completed", "failed", "delayed", "paused")
-    ])
-  );
-
-  return Object.fromEntries(entries);
+  try {
+    const entries = await Promise.all(
+      queueDescriptors.map(async ({ name, queue }) => [
+        name,
+        await queue.getJobCounts("waiting", "active", "completed", "failed", "delayed", "paused")
+      ])
+    );
+    return Object.fromEntries(entries);
+  } catch {
+    return {};
+  }
 }
 
 async function queueDetails() {
-  return Promise.all(
-    queueDescriptors.map(async ({ name, purpose, queue }) => {
-      const [counts, failedJobs, activeJobs] = await Promise.all([
-        queue.getJobCounts("waiting", "active", "completed", "failed", "delayed", "paused"),
-        queue.getJobs(["failed"], 0, 4, false),
-        queue.getJobs(["active"], 0, 4, false)
-      ]);
+  try {
+    return await Promise.all(
+      queueDescriptors.map(async ({ name, purpose, queue }) => {
+        const [counts, failedJobs, activeJobs] = await Promise.all([
+          queue.getJobCounts("waiting", "active", "completed", "failed", "delayed", "paused"),
+          queue.getJobs(["failed"], 0, 4, false),
+          queue.getJobs(["active"], 0, 4, false)
+        ]);
 
-      return {
-        name,
-        purpose,
-        counts,
-        activeJobs: activeJobs.map((job) => ({
-          id: job.id,
-          name: job.name,
-          attemptsMade: job.attemptsMade,
-          timestamp: job.timestamp
-        })),
-        recentFailures: failedJobs.map((job) => ({
-          id: job.id,
-          name: job.name,
-          attemptsMade: job.attemptsMade,
-          failedReason: job.failedReason,
-          finishedOn: job.finishedOn
-        }))
-      };
-    })
-  );
+        return {
+          name,
+          purpose,
+          counts,
+          activeJobs: activeJobs.map((job) => ({
+            id: job.id,
+            name: job.name,
+            attemptsMade: job.attemptsMade,
+            timestamp: job.timestamp
+          })),
+          recentFailures: failedJobs.map((job) => ({
+            id: job.id,
+            name: job.name,
+            attemptsMade: job.attemptsMade,
+            failedReason: job.failedReason,
+            finishedOn: job.finishedOn
+          }))
+        };
+      })
+    );
+  } catch {
+    return [];
+  }
 }
 
 export const adminService = {
@@ -115,5 +122,3 @@ export const adminService = {
     };
   }
 };
-
-

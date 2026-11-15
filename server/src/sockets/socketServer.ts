@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { Redis } from "ioredis";
 import { Server } from "socket.io";
 import { logger } from "../config/logger.js";
-import { createRedisConnection, getRedis } from "../config/redis.js";
+import { createRedisConnection, getRedis, isRedisReady } from "../config/redis.js";
 import { authService } from "../modules/auth/auth.service.js";
 import { metricsService } from "../modules/metrics/metrics.service.js";
 import { ACCESS_TOKEN_COOKIE, parseCookieHeader } from "../utils/cookies.js";
@@ -29,30 +29,39 @@ function emitLocal(userId: string, event: string, payload: unknown): void {
 }
 
 async function publishRealtimeEvent(userId: string, event: string, payload: unknown): Promise<void> {
-  const envelope: RealtimeEnvelope = {
-    sourceId: INSTANCE_ID,
-    userId,
-    event,
-    payload
-  };
-  await getRedis().publish(REALTIME_CHANNEL, JSON.stringify(envelope));
+  if (!isRedisReady()) return;
+  try {
+    const envelope: RealtimeEnvelope = {
+      sourceId: INSTANCE_ID,
+      userId,
+      event,
+      payload
+    };
+    await getRedis().publish(REALTIME_CHANNEL, JSON.stringify(envelope));
+  } catch (error) {
+    logger.warn({ userId, event, error: error instanceof Error ? error.message : String(error) }, "Realtime event publish skipped (Redis unavailable)");
+  }
 }
 
 function ensureRealtimeSubscriber(): void {
   if (realtimeSubscriber) return;
-  realtimeSubscriber = createRedisConnection("risklens-realtime-subscriber");
-  realtimeSubscriber.subscribe(REALTIME_CHANNEL).catch((error) => {
-    logger.error({ component: "socket", error }, "Failed to subscribe to realtime channel");
-  });
-  realtimeSubscriber.on("message", (_channel, message) => {
-    try {
-      const envelope = JSON.parse(message) as RealtimeEnvelope;
-      if (envelope.sourceId === INSTANCE_ID) return;
-      emitLocal(envelope.userId, envelope.event, envelope.payload);
-    } catch (error) {
-      logger.warn({ component: "socket", error }, "Dropped malformed realtime event");
-    }
-  });
+  try {
+    realtimeSubscriber = createRedisConnection("risklens-realtime-subscriber");
+    realtimeSubscriber.subscribe(REALTIME_CHANNEL).catch((error) => {
+      logger.warn({ component: "socket", error: error instanceof Error ? error.message : String(error) }, "Failed to subscribe to realtime channel (will retry)");
+    });
+    realtimeSubscriber.on("message", (_channel, message) => {
+      try {
+        const envelope = JSON.parse(message) as RealtimeEnvelope;
+        if (envelope.sourceId === INSTANCE_ID) return;
+        emitLocal(envelope.userId, envelope.event, envelope.payload);
+      } catch (error) {
+        logger.warn({ component: "socket", error }, "Dropped malformed realtime event");
+      }
+    });
+  } catch (error) {
+    logger.warn({ component: "socket", error: error instanceof Error ? error.message : String(error) }, "Could not initialize Redis realtime subscriber");
+  }
 }
 
 export function initSocketServer(httpServer: HttpServer): Server {

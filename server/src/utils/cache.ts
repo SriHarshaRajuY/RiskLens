@@ -1,6 +1,6 @@
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
-import { getRedis } from "../config/redis.js";
+import { getRedis, isRedisReady } from "../config/redis.js";
 import { CachedAnalyticsMetadata } from "../modules/analytics/cachedAnalyticsMetadata.model.js";
 import { metricsService } from "../modules/metrics/metrics.service.js";
 
@@ -14,43 +14,66 @@ type CacheOptions = {
 const inFlightComputations = new Map<string, Promise<unknown>>();
 
 export async function getCache<T>(key: string, requestId?: string): Promise<T | null> {
-  const redis = getRedis();
-  const raw = await redis.get(key);
-  const hit = Boolean(raw);
+  if (!isRedisReady()) {
+    return null;
+  }
 
-  metricsService.increment(hit ? "cacheHits" : "cacheMisses");
-  logger.info({ requestId, cacheKey: key, hit }, "Cache lookup");
-
-  if (!raw) return null;
   try {
-    return JSON.parse(raw) as T;
+    const redis = getRedis();
+    const raw = await Promise.race([
+      redis.get(key),
+      new Promise<null>((_, reject) => setTimeout(() => reject(new Error("Redis get timeout")), 2000))
+    ]);
+    const hit = Boolean(raw);
+
+    metricsService.increment(hit ? "cacheHits" : "cacheMisses");
+    logger.info({ requestId, cacheKey: key, hit }, "Cache lookup");
+
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as T;
+    } catch (error) {
+      logger.warn({ requestId, cacheKey: key, error }, "Cache payload was malformed and will be evicted");
+      await redis.del(key).catch(() => undefined);
+      return null;
+    }
   } catch (error) {
-    logger.warn({ requestId, cacheKey: key, error }, "Cache payload was malformed and will be evicted");
-    await redis.del(key).catch(() => undefined);
+    logger.warn({ requestId, cacheKey: key, error: error instanceof Error ? error.message : String(error) }, "Cache lookup failed, proceeding without cache");
     return null;
   }
 }
 
 export async function setCache<T>(key: string, value: T, options?: CacheOptions): Promise<void> {
-  const ttlSeconds = options?.ttlSeconds ?? env.CACHE_TTL_SECONDS;
-  const redis = getRedis();
+  if (!isRedisReady()) {
+    return;
+  }
 
-  await redis.set(key, JSON.stringify(value), "EX", ttlSeconds);
+  try {
+    const ttlSeconds = options?.ttlSeconds ?? env.CACHE_TTL_SECONDS;
+    const redis = getRedis();
 
-  if (options?.portfolioId && options.metricType) {
-    const now = new Date();
-    await CachedAnalyticsMetadata.findOneAndUpdate(
-      { cacheKey: key },
-      {
-        portfolioId: options.portfolioId,
-        cacheKey: key,
-        metricType: options.metricType,
-        lastComputedAt: now,
-        expiresAt: new Date(now.getTime() + ttlSeconds * 1000),
-        $inc: { missCount: 1 }
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+    await Promise.race([
+      redis.set(key, JSON.stringify(value), "EX", ttlSeconds),
+      new Promise<null>((_, reject) => setTimeout(() => reject(new Error("Redis set timeout")), 2000))
+    ]);
+
+    if (options?.portfolioId && options.metricType) {
+      const now = new Date();
+      await CachedAnalyticsMetadata.findOneAndUpdate(
+        { cacheKey: key },
+        {
+          portfolioId: options.portfolioId,
+          cacheKey: key,
+          metricType: options.metricType,
+          lastComputedAt: now,
+          expiresAt: new Date(now.getTime() + ttlSeconds * 1000),
+          $inc: { missCount: 1 }
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      ).catch(() => undefined);
+    }
+  } catch (error) {
+    logger.warn({ cacheKey: key, error: error instanceof Error ? error.message : String(error) }, "Cache set failed, skipping write");
   }
 }
 
@@ -80,20 +103,29 @@ export async function withCache<T>(key: string, compute: () => Promise<T>, optio
 }
 
 export async function deleteByPattern(pattern: string, requestId?: string): Promise<number> {
-  const redis = getRedis();
-  let cursor = "0";
-  let deleted = 0;
+  if (!isRedisReady()) {
+    return 0;
+  }
 
-  do {
-    const [nextCursor, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 100);
-    cursor = nextCursor;
-    if (keys.length > 0) {
-      deleted += await redis.del(...keys);
-    }
-  } while (cursor !== "0");
+  try {
+    const redis = getRedis();
+    let cursor = "0";
+    let deleted = 0;
 
-  logger.info({ requestId, pattern, deleted }, "Cache invalidated");
-  return deleted;
+    do {
+      const [nextCursor, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 100);
+      cursor = nextCursor;
+      if (keys.length > 0) {
+        deleted += await redis.del(...keys);
+      }
+    } while (cursor !== "0");
+
+    logger.info({ requestId, pattern, deleted }, "Cache invalidated");
+    return deleted;
+  } catch (error) {
+    logger.warn({ requestId, pattern, error: error instanceof Error ? error.message : String(error) }, "Cache invalidation by pattern failed, skipping");
+    return 0;
+  }
 }
 
 export function portfolioCacheKey(portfolioId: string, metric: "summary" | "holdings" | "risk" | "returns"): string {

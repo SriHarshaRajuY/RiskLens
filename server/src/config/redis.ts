@@ -12,6 +12,11 @@ function requiresTls(redisUrl: string): boolean {
   return redisUrl.startsWith("rediss://") || /upstash\.io/i.test(redisUrl);
 }
 
+export function isRedisReady(client?: Redis | null): boolean {
+  const target = client ?? redisClient;
+  return target?.status === "ready";
+}
+
 export function createRedisConnection(connectionName = "risklens"): Redis {
   const redisUrl = normalizedRedisUrl();
   const client = new Redis(redisUrl, {
@@ -19,6 +24,13 @@ export function createRedisConnection(connectionName = "risklens"): Redis {
     maxRetriesPerRequest: null,
     enableReadyCheck: false,
     lazyConnect: true,
+    retryStrategy(times) {
+      const delay = Math.min(times * 1000, 15000);
+      return delay;
+    },
+    reconnectOnError(_err) {
+      return true;
+    },
     ...(requiresTls(redisUrl) ? { tls: {} } : {})
   });
 
@@ -26,8 +38,12 @@ export function createRedisConnection(connectionName = "risklens"): Redis {
     logger.info({ component: "redis", connectionName }, "Redis connected");
   });
 
+  client.on("ready", () => {
+    logger.info({ component: "redis", connectionName }, "Redis ready");
+  });
+
   client.on("error", (error: Error) => {
-    logger.error({ component: "redis", connectionName, error }, "Redis error");
+    logger.warn({ component: "redis", connectionName, error: error.message }, "Redis connection error");
   });
 
   return client;
@@ -40,7 +56,7 @@ export function getRedis(): Redis {
 
 export async function closeRedis(): Promise<void> {
   if (redisClient) {
-    await redisClient.quit();
+    await redisClient.quit().catch(() => undefined);
     redisClient = null;
   }
 }
