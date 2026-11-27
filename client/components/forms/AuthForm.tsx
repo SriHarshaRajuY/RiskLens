@@ -161,7 +161,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           </div>
         </div>
 
-        <Card className="mx-auto w-full max-w-md border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.12)]">
+        <Card className="mx-auto w-full max-w-md border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.12)] animate-page-enter">
           <CardHeader>
             <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-700 text-white">
               <LockKeyhole className="h-5 w-5" />

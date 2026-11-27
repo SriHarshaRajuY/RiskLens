@@ -141,13 +141,13 @@ export default function PortfoliosPage() {
             </div>
             <div className="space-y-2.5">
               <Label>Currency</Label>
-              <select className="h-11 w-full rounded-md border bg-background px-3.5 text-sm outline-none transition focus:ring-2 focus:ring-ring" {...form.register("baseCurrency")}>
+              <select className="h-10 w-full rounded-lg border bg-background px-3.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/20" {...form.register("baseCurrency")}>
                 <option value="USD">USD</option>
                 <option value="INR">INR</option>
               </select>
             </div>
             <Button type="submit" className="w-full" disabled={createMutation.isPending}>
-              <Plus className="h-4 w-4 mr-1.5" />
+              <Plus className="h-4 w-4" />
               Create portfolio
             </Button>
           </form>
@@ -209,31 +209,31 @@ export default function PortfoliosPage() {
                   {portfolioId ? (
                     isEditing ? (
                       <div className="flex items-center gap-2">
-                        <Button size="sm" className="flex-1 h-9" disabled={updateMutation.isPending} onClick={saveEdit}>
-                          <Check className="h-4 w-4 mr-1.5" />
+                        <Button size="sm" className="flex-1" disabled={updateMutation.isPending} onClick={saveEdit}>
+                          <Check className="h-3.5 w-3.5" />
                           Save
                         </Button>
-                        <Button variant="outline" size="sm" className="h-9 px-3" onClick={() => setEditing(null)}>
-                          <X className="h-4 w-4 mr-1.5" />
+                        <Button variant="outline" size="sm" onClick={() => setEditing(null)}>
+                          <X className="h-3.5 w-3.5" />
                           Cancel
                         </Button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <Button asChild size="sm" className="flex-1 h-8 text-xs font-medium">
+                        <Button asChild size="sm" className="flex-1">
                           <Link href={`/dashboard/portfolios/${portfolioId}`}>
                             Open
-                            <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                            <ArrowRight className="h-3.5 w-3.5" />
                           </Link>
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+                          className="text-muted-foreground hover:text-foreground"
                           onClick={() => beginEdit(portfolio)}
                           title="Edit portfolio"
                         >
-                          <Pencil className="h-3.5 w-3.5 mr-1" />
+                          <Pencil className="h-3.5 w-3.5" />
                           Edit
                         </Button>
                         <ConfirmAction
@@ -246,8 +246,8 @@ export default function PortfoliosPage() {
                           trigger={(open) => (
                             <Button
                               variant="outline"
-                              size="sm"
-                              className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive hover:border-destructive/30"
+                              size="icon"
+                              className="text-muted-foreground hover:border-destructive/30 hover:text-destructive"
                               disabled={deleteMutation.isPending}
                               onClick={open}
                               title={`Delete ${portfolio.name}`}

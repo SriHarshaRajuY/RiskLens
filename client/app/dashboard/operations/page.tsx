@@ -53,7 +53,7 @@ export default function OperationsPage() {
           <p className="mt-1 text-sm text-muted-foreground">Review service health, import activity, alerts, uploads, and notifications.</p>
         </div>
         <Button className="w-full sm:w-auto" variant="outline" onClick={() => metricsQuery.refetch()} disabled={metricsQuery.isFetching}>
-          <RefreshCw className="h-4 w-4 mr-1.5" />
+          <RefreshCw className={`h-4 w-4 ${metricsQuery.isFetching ? "animate-spin" : ""}`} />
           Refresh
         </Button>
       </div>

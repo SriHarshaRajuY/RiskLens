@@ -105,7 +105,7 @@ export default function BacktestPage() {
               </div>
               <div className="space-y-2.5">
                 <Label>Strategy</Label>
-                <select className="h-11 w-full rounded-md border bg-background px-3.5 text-sm font-medium outline-none transition focus:ring-2 focus:ring-ring" {...form.register("strategy")}>
+                <select className="h-10 w-full rounded-lg border bg-background px-3.5 text-sm font-medium outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/20" {...form.register("strategy")}>
                   <option value="BUY_AND_HOLD">Buy and hold</option>
                   <option value="MOVING_AVERAGE_CROSSOVER">Moving average crossover</option>
                 </select>
@@ -140,7 +140,7 @@ export default function BacktestPage() {
                 {form.formState.errors.initialCapital ? <p className="text-sm text-destructive">{form.formState.errors.initialCapital.message}</p> : null}
               </div>
               <Button type="submit" className="w-full" disabled={mutation.isPending}>
-                <Play className="h-4 w-4 mr-1.5" />
+                <Play className="h-4 w-4" />
                 Run backtest
               </Button>
             </form>
