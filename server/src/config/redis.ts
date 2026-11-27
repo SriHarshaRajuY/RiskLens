@@ -19,14 +19,15 @@ export function isRedisReady(client?: Redis | null): boolean {
 
 export function createRedisConnection(connectionName = "risklens"): Redis {
   const redisUrl = normalizedRedisUrl();
+  let lastErrorLogAt = 0;
+
   const client = new Redis(redisUrl, {
     connectionName,
     maxRetriesPerRequest: null,
     enableReadyCheck: false,
     lazyConnect: true,
     retryStrategy(times) {
-      const delay = Math.min(times * 1000, 15000);
-      return delay;
+      return Math.min(times * 2000, 60000);
     },
     reconnectOnError(_err) {
       return true;
@@ -35,6 +36,7 @@ export function createRedisConnection(connectionName = "risklens"): Redis {
   });
 
   client.on("connect", () => {
+    lastErrorLogAt = 0;
     logger.info({ component: "redis", connectionName }, "Redis connected");
   });
 
@@ -43,7 +45,11 @@ export function createRedisConnection(connectionName = "risklens"): Redis {
   });
 
   client.on("error", (error: Error) => {
-    logger.warn({ component: "redis", connectionName, error: error.message }, "Redis connection error");
+    const now = Date.now();
+    if (now - lastErrorLogAt >= 60_000) {
+      lastErrorLogAt = now;
+      logger.warn({ component: "redis", connectionName, error: error.message }, "Redis connection error (throttled)");
+    }
   });
 
   return client;
