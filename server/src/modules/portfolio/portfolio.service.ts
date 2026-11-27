@@ -63,8 +63,38 @@ export const portfolioService = {
       Portfolio.countDocuments(query)
     ]);
 
+    const portfolioIds = items.map((item) => item._id);
+    const tradeStats =
+      portfolioIds.length > 0
+        ? await Trade.aggregate<{ _id: mongoose.Types.ObjectId; tradeCount: number; lastTradeDate: Date | null }>([
+            {
+              $match: {
+                userId: toObjectId(userId, "userId"),
+                portfolioId: { $in: portfolioIds }
+              }
+            },
+            {
+              $group: {
+                _id: "$portfolioId",
+                tradeCount: { $sum: 1 },
+                lastTradeDate: { $max: "$tradeDate" }
+              }
+            }
+          ])
+        : [];
+
+    const statsByPortfolio = new Map(tradeStats.map((stat) => [stat._id.toString(), stat]));
+    const enriched = items.map((item) => {
+      const stat = statsByPortfolio.get(item._id.toString());
+      return {
+        ...item,
+        tradeCount: stat?.tradeCount ?? 0,
+        lastTradeDate: stat?.lastTradeDate ?? null
+      };
+    });
+
     return {
-      items,
+      items: enriched,
       meta: paginationMeta(pagination.page, pagination.limit, total)
     };
   },

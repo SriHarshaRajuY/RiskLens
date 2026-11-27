@@ -1,16 +1,18 @@
 "use client";
 
+import { useId } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiRequest, getApiErrorMessage, jsonBody } from "@/lib/api";
+import { formatCurrency } from "@/lib/utils";
 
 const schema = z.object({
   symbol: z
@@ -29,7 +31,8 @@ const schema = z.object({
 
 type Values = z.infer<typeof schema>;
 
-export function TradeForm({ portfolioId }: { portfolioId: string }) {
+export function TradeForm({ portfolioId, currency = "USD" }: { portfolioId: string; currency?: string }) {
+  const idPrefix = useId();
   const queryClient = useQueryClient();
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -40,6 +43,15 @@ export function TradeForm({ portfolioId }: { portfolioId: string }) {
       tradeDate: new Date().toISOString().slice(0, 10)
     }
   });
+
+  const watchedQty = Number(form.watch("quantity") || 0);
+  const watchedPrice = Number(form.watch("price") || 0);
+  const watchedFees = Number(form.watch("fees") || 0);
+  const estimatedNotional =
+    Number.isFinite(watchedQty) && Number.isFinite(watchedPrice) && watchedQty > 0 && watchedPrice > 0
+      ? watchedQty * watchedPrice + (Number.isFinite(watchedFees) ? watchedFees : 0)
+      : null;
+
   const mutation = useMutation({
     mutationFn: (values: Values) =>
       apiRequest(`/portfolios/${portfolioId}/trades`, {
@@ -54,6 +66,8 @@ export function TradeForm({ portfolioId }: { portfolioId: string }) {
       queryClient.invalidateQueries({ queryKey: ["returns", portfolioId] });
       queryClient.invalidateQueries({ queryKey: ["trades", portfolioId] });
       queryClient.invalidateQueries({ queryKey: ["activity", portfolioId] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["portfolios"] });
       form.reset({
         symbol: "",
         side: "BUY",
@@ -62,7 +76,7 @@ export function TradeForm({ portfolioId }: { portfolioId: string }) {
         fees: 0,
         tradeDate: new Date().toISOString().slice(0, 10)
       });
-      toast.success("Trade added");
+      toast.success("Trade recorded");
     },
     onError: (error) => toast.error(getApiErrorMessage(error, "Could not add trade"))
   });
@@ -70,45 +84,78 @@ export function TradeForm({ portfolioId }: { portfolioId: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Add trade</CardTitle>
+        <CardTitle>Record manual trade</CardTitle>
+        <CardDescription>Log a buy or sell execution directly into this portfolio ledger.</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="grid gap-4 sm:grid-cols-2" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
-          <div className="space-y-2.5">
-            <Label>Symbol</Label>
-            <Input {...form.register("symbol")} placeholder="AAPL" aria-invalid={Boolean(form.formState.errors.symbol)} />
-            {form.formState.errors.symbol ? <p className="text-sm text-destructive">{form.formState.errors.symbol.message}</p> : null}
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-symbol`}>Symbol</Label>
+            <Input
+              id={`${idPrefix}-symbol`}
+              {...form.register("symbol")}
+              placeholder="MSFT"
+              className="uppercase"
+              aria-invalid={Boolean(form.formState.errors.symbol)}
+            />
+            {form.formState.errors.symbol ? <p className="text-xs text-destructive">{form.formState.errors.symbol.message}</p> : null}
           </div>
-          <div className="space-y-2.5">
-            <Label>Side</Label>
-            <select className="h-10 w-full rounded-lg border bg-background px-3.5 text-sm font-medium outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/20" {...form.register("side")}>
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-side`}>Side</Label>
+            <select
+              id={`${idPrefix}-side`}
+              className="h-10 w-full rounded-lg border bg-background px-3.5 text-sm font-medium outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/20"
+              {...form.register("side")}
+            >
               <option value="BUY">BUY</option>
               <option value="SELL">SELL</option>
             </select>
           </div>
-          <div className="space-y-2.5">
-            <Label>Quantity</Label>
-            <Input type="number" step="0.0001" placeholder="10" {...form.register("quantity")} aria-invalid={Boolean(form.formState.errors.quantity)} />
-            {form.formState.errors.quantity ? <p className="text-sm text-destructive">{form.formState.errors.quantity.message}</p> : null}
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-qty`}>Quantity</Label>
+            <Input
+              id={`${idPrefix}-qty`}
+              type="number"
+              step="0.0001"
+              placeholder="10"
+              {...form.register("quantity")}
+              aria-invalid={Boolean(form.formState.errors.quantity)}
+            />
+            {form.formState.errors.quantity ? <p className="text-xs text-destructive">{form.formState.errors.quantity.message}</p> : null}
           </div>
-          <div className="space-y-2.5">
-            <Label>Price</Label>
-            <Input type="number" step="0.01" placeholder="180.00" {...form.register("price")} aria-invalid={Boolean(form.formState.errors.price)} />
-            {form.formState.errors.price ? <p className="text-sm text-destructive">{form.formState.errors.price.message}</p> : null}
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-price`}>Price per unit ({currency})</Label>
+            <Input
+              id={`${idPrefix}-price`}
+              type="number"
+              step="0.01"
+              placeholder="420.00"
+              {...form.register("price")}
+              aria-invalid={Boolean(form.formState.errors.price)}
+            />
+            {form.formState.errors.price ? <p className="text-xs text-destructive">{form.formState.errors.price.message}</p> : null}
           </div>
-          <div className="space-y-2.5">
-            <Label>Fees</Label>
-            <Input type="number" step="0.01" {...form.register("fees")} aria-invalid={Boolean(form.formState.errors.fees)} />
-            {form.formState.errors.fees ? <p className="text-sm text-destructive">{form.formState.errors.fees.message}</p> : null}
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-fees`}>Fees ({currency})</Label>
+            <Input id={`${idPrefix}-fees`} type="number" step="0.01" {...form.register("fees")} aria-invalid={Boolean(form.formState.errors.fees)} />
+            {form.formState.errors.fees ? <p className="text-xs text-destructive">{form.formState.errors.fees.message}</p> : null}
           </div>
-          <div className="space-y-2.5">
-            <Label>Date</Label>
-            <Input type="date" {...form.register("tradeDate")} aria-invalid={Boolean(form.formState.errors.tradeDate)} />
-            {form.formState.errors.tradeDate ? <p className="text-sm text-destructive">{form.formState.errors.tradeDate.message}</p> : null}
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-date`}>Execution date</Label>
+            <Input id={`${idPrefix}-date`} type="date" {...form.register("tradeDate")} aria-invalid={Boolean(form.formState.errors.tradeDate)} />
+            {form.formState.errors.tradeDate ? <p className="text-xs text-destructive">{form.formState.errors.tradeDate.message}</p> : null}
           </div>
+
+          {estimatedNotional !== null ? (
+            <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-3.5 py-2 text-xs text-muted-foreground sm:col-span-2">
+              <span>Order notional (incl. fees)</span>
+              <span className="font-semibold tabular-nums text-foreground">{formatCurrency(estimatedNotional, currency)}</span>
+            </div>
+          ) : null}
+
           <Button type="submit" className="w-full sm:col-span-2" disabled={mutation.isPending}>
-            <Plus className="h-4 w-4" />
-            Add trade
+            {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            {mutation.isPending ? "Recording trade..." : "Add trade"}
           </Button>
         </form>
       </CardContent>

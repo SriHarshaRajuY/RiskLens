@@ -1,9 +1,11 @@
+export type MarketPriceSource = "yahoo" | "stooq" | "alpha_vantage" | "last_trade" | "fallback";
+
 export type Holding = {
   symbol: string;
   quantity: number;
   averageBuyPrice: number;
   currentPrice: number;
-  priceSource?: "alpha_vantage" | "fallback";
+  priceSource?: MarketPriceSource;
   marketValue: number;
   costBasis: number;
   realizedPnl: number;

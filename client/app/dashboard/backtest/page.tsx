@@ -156,10 +156,24 @@ export default function BacktestPage() {
                 <MetricCard title="Trades" value={String(active.numberOfTrades)} />
               </div>
               <BacktestResultChart result={active} />
-              {active.dataSource === "fallback" ? (
+              {active.dataSource ? (
                 <Card>
-                  <CardContent className="p-4 text-sm text-muted-foreground">
-                    Price source: estimated historical prices.
+                  <CardContent className="flex items-center justify-between p-4 text-xs text-muted-foreground">
+                    <span>
+                      Historical price feed:{" "}
+                      <strong className="font-medium text-foreground">
+                        {active.dataSource === "yahoo"
+                          ? "Yahoo Finance (real daily closes)"
+                          : active.dataSource === "stooq"
+                            ? "Stooq (real daily closes)"
+                            : active.dataSource === "alpha_vantage"
+                              ? "Alpha Vantage (real daily closes)"
+                              : "Simulated reference series"}
+                      </strong>
+                    </span>
+                    <span className="font-mono">
+                      Sharpe {active.sharpeRatio.toFixed(2)} · Win rate {active.winRate.toFixed(1)}%
+                    </span>
                   </CardContent>
                 </Card>
               ) : null}

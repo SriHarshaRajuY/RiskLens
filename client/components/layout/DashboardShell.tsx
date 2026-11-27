@@ -82,6 +82,14 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   }, [mobileNavOpen]);
 
   const activeSection = useMemo(() => {
+    if (pathname.startsWith("/dashboard/portfolios/")) {
+      return {
+        href: pathname,
+        label: "Portfolio workspace",
+        subtitle: "Holdings, trades, risk analytics & alerts",
+        icon: BriefcaseBusiness
+      };
+    }
     return (
       navItems.find((item) => pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))) ??
       navItems[0]

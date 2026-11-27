@@ -1,9 +1,18 @@
 import { API_URL, CSRF_COOKIE_NAME } from "@/lib/constants";
 
+export type PaginationMeta = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+};
+
 export type ApiResponse<T> = {
   success: boolean;
   data: T;
-  meta?: Record<string, unknown>;
+  meta?: PaginationMeta;
   message?: string;
   code?: string;
 };
@@ -174,7 +183,10 @@ async function parsePayload<T>(response: Response): Promise<ApiResponse<T> & { d
   }
 }
 
-export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+export async function apiRequestWithMeta<T>(
+  path: string,
+  options: ApiRequestOptions = {}
+): Promise<{ data: T; meta?: PaginationMeta }> {
   const method = options.method ?? "GET";
   const isForm = options.rawBody instanceof FormData;
   const hasJsonBody = !isForm && Boolean(options.body);
@@ -198,10 +210,10 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
     if (response.status === 401 && !options.skipAuthRefresh && !path.startsWith("/auth/")) {
       await refreshSession();
-      return apiRequest<T>(path, { ...options, skipAuthRefresh: true });
+      return apiRequestWithMeta<T>(path, { ...options, skipAuthRefresh: true });
     }
 
-    if (response.status === 204) return undefined as T;
+    if (response.status === 204) return { data: undefined as T };
 
     const payload = await parsePayload<T>(response);
     if (!response.ok || payload.success === false) {
@@ -212,7 +224,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
         payload.details
       );
     }
-    return payload.data;
+    return { data: payload.data, meta: payload.meta };
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new ApiError(408, "REQUEST_TIMEOUT", "That took longer than expected. Please try again in a moment.");
@@ -228,6 +240,11 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   } finally {
     globalThis.clearTimeout(timeout);
   }
+}
+
+export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+  const result = await apiRequestWithMeta<T>(path, options);
+  return result.data;
 }
 
 export function jsonBody<T>(body: T): string {

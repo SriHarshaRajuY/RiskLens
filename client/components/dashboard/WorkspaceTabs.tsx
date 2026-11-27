@@ -48,11 +48,11 @@ export function WorkspaceTabs<T extends string>({
   onChange: (tab: T) => void;
 }) {
   return (
-    <div className="sticky top-[4.25rem] z-[5] -mx-1 px-1">
+    <div className="sticky top-16 z-[8] -mx-1 bg-background/95 px-1 pt-2 pb-2 backdrop-blur-md">
       <div
         role="tablist"
         aria-label="Workspace sections"
-        className="flex items-center gap-1 overflow-x-auto rounded-xl border border-border/80 bg-card/95 p-1.5 shadow-soft backdrop-blur-md"
+        className="flex items-center gap-1 overflow-x-auto rounded-xl border border-border/80 bg-card p-1.5 shadow-soft"
       >
         {tabs.map((tab) => {
           const Icon = tab.icon;

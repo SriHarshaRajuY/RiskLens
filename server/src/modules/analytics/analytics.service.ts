@@ -14,6 +14,7 @@ function toLedgerEntry(trade: {
   price: number;
   fees?: number;
   tradeDate: Date;
+  createdAt?: Date;
 }): TradeLedgerEntry {
   return {
     symbol: trade.symbol,
@@ -21,7 +22,8 @@ function toLedgerEntry(trade: {
     quantity: trade.quantity,
     price: trade.price,
     fees: trade.fees,
-    tradeDate: new Date(trade.tradeDate)
+    tradeDate: new Date(trade.tradeDate),
+    createdAt: trade.createdAt ? new Date(trade.createdAt) : undefined
   };
 }
 

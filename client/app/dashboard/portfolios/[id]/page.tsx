@@ -4,7 +4,21 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, BellRing, BriefcaseBusiness, ChartLine, Check, Pencil, ShieldAlert, Sparkles, Trash2, X } from "lucide-react";
+import {
+  ArrowLeft,
+  BellRing,
+  BriefcaseBusiness,
+  ChartLine,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  Search,
+  ShieldAlert,
+  Sparkles,
+  Trash2,
+  X
+} from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { ActivityFeed } from "@/components/activity/ActivityFeed";
@@ -19,8 +33,9 @@ import { WorkspaceTabs, useWorkspaceTab, type WorkspaceTabItem } from "@/compone
 import { TradeForm } from "@/components/forms/TradeForm";
 import { TradeUploadBox } from "@/components/forms/TradeUploadBox";
 import { HoldingsTable } from "@/components/tables/HoldingsTable";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmAction } from "@/components/ui/confirm-action";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -28,7 +43,7 @@ import { persistActivePortfolioId } from "@/hooks/useActivePortfolio";
 import { usePortfolioSummary } from "@/hooks/usePortfolioSummary";
 import { useRiskMetrics } from "@/hooks/useRiskMetrics";
 import { useRiskNarrative } from "@/hooks/useRiskNarrative";
-import { apiRequest, getApiErrorMessage, jsonBody } from "@/lib/api";
+import { apiRequest, apiRequestWithMeta, getApiErrorMessage, jsonBody } from "@/lib/api";
 import { isObjectId } from "@/lib/mongo";
 import { formatCurrency } from "@/lib/utils";
 import type { ActivityLog } from "@/types/activity";
@@ -58,11 +73,15 @@ function invalidatePortfolioQueries(queryClient: ReturnType<typeof useQueryClien
   queryClient.invalidateQueries({ queryKey: ["returns", portfolioId] });
   queryClient.invalidateQueries({ queryKey: ["trades", portfolioId] });
   queryClient.invalidateQueries({ queryKey: ["activity", portfolioId] });
+  queryClient.invalidateQueries({ queryKey: ["notifications"] });
+  queryClient.invalidateQueries({ queryKey: ["portfolios"] });
 }
 
 function tradeDateInput(value: string): string {
   return new Date(value).toISOString().slice(0, 10);
 }
+
+const TRADES_PAGE_SIZE = 20;
 
 export default function PortfolioDetailPage() {
   const params = useParams<{ id: string }>();
@@ -70,6 +89,9 @@ export default function PortfolioDetailPage() {
   const portfolioId = params.id;
   const isValidPortfolioId = isObjectId(portfolioId);
   const [editingTrade, setEditingTrade] = useState<TradeEditValues | null>(null);
+  const [tradePage, setTradePage] = useState(1);
+  const [tradeSymbolFilter, setTradeSymbolFilter] = useState("");
+  const [tradeSideFilter, setTradeSideFilter] = useState<"ALL" | "BUY" | "SELL">("ALL");
   const [activeTab, setActiveTab] = useWorkspaceTab<DetailTab>(DETAIL_TABS, "overview");
 
   const portfolioQuery = useQuery({
@@ -92,11 +114,24 @@ export default function PortfolioDetailPage() {
     queryFn: () => apiRequest<ReturnPoint[]>(`/portfolios/${portfolioId}/returns`),
     enabled: portfolioReady
   });
+  const normalizedTradeSymbol = tradeSymbolFilter.trim().toUpperCase();
   const tradesQuery = useQuery({
-    queryKey: ["trades", portfolioId],
-    queryFn: () => apiRequest<Trade[]>(`/portfolios/${portfolioId}/trades?limit=20&sortBy=tradeDate&sortOrder=desc`),
+    queryKey: ["trades", portfolioId, tradePage, normalizedTradeSymbol, tradeSideFilter],
+    queryFn: () => {
+      const search = new URLSearchParams({
+        page: String(tradePage),
+        limit: String(TRADES_PAGE_SIZE),
+        sortBy: "tradeDate",
+        sortOrder: "desc"
+      });
+      if (normalizedTradeSymbol) search.set("symbol", normalizedTradeSymbol);
+      if (tradeSideFilter !== "ALL") search.set("side", tradeSideFilter);
+      return apiRequestWithMeta<Trade[]>(`/portfolios/${portfolioId}/trades?${search.toString()}`);
+    },
     enabled: portfolioReady
   });
+  const trades = tradesQuery.data?.data ?? [];
+  const tradesMeta = tradesQuery.data?.meta;
   const activityQuery = useQuery({
     queryKey: ["activity", portfolioId],
     queryFn: () => apiRequest<ActivityLog[]>(`/activity?portfolioId=${portfolioId}&limit=10`),
@@ -263,134 +298,268 @@ export default function PortfolioDetailPage() {
 
           <div className="grid gap-5 xl:grid-cols-2">
             <TradeUploadBox portfolioId={portfolioId} />
-            <TradeForm portfolioId={portfolioId} />
+            <TradeForm portfolioId={portfolioId} currency={currency} />
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent trades</CardTitle>
+          <Card className="overflow-hidden">
+            <CardHeader className="gap-4 border-b bg-muted/20 pb-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <CardTitle>Trade ledger</CardTitle>
+                  {typeof tradesMeta?.total === "number" ? (
+                    <Badge variant="secondary" className="tabular-nums">
+                      {tradesMeta.total} {tradesMeta.total === 1 ? "trade" : "trades"}
+                    </Badge>
+                  ) : null}
+                </div>
+                <CardDescription>Complete chronological execution history recorded in this portfolio.</CardDescription>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={tradeSymbolFilter}
+                    onChange={(event) => {
+                      setTradeSymbolFilter(event.target.value);
+                      setTradePage(1);
+                    }}
+                    placeholder="Filter symbol..."
+                    aria-label="Filter trades by symbol"
+                    className="h-9 w-36 pl-8 text-xs uppercase"
+                  />
+                </div>
+                <select
+                  aria-label="Filter trades by side"
+                  className="h-9 rounded-lg border bg-background px-2.5 text-xs font-medium outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/20"
+                  value={tradeSideFilter}
+                  onChange={(event) => {
+                    setTradeSideFilter(event.target.value as "ALL" | "BUY" | "SELL");
+                    setTradePage(1);
+                  }}
+                >
+                  <option value="ALL">All sides</option>
+                  <option value="BUY">BUY only</option>
+                  <option value="SELL">SELL only</option>
+                </select>
+              </div>
             </CardHeader>
-            <CardContent>
-              {tradesQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading trades...</p> : null}
+            <CardContent className="p-0 sm:p-0">
+              {tradesQuery.isLoading ? <p className="p-6 text-sm text-muted-foreground">Loading trades...</p> : null}
               {tradesQuery.isError ? (
-                <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                  Trades could not be loaded. Please check your connection and try again.
+                <div className="p-6">
+                  <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                    Trades could not be loaded. Please check your connection and try again.
+                  </div>
                 </div>
               ) : null}
-              {!tradesQuery.isLoading && !tradesQuery.isError && (tradesQuery.data ?? []).length === 0 ? (
-                <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                  No trades recorded yet.
+              {!tradesQuery.isLoading && !tradesQuery.isError && trades.length === 0 ? (
+                <div className="p-6">
+                  <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                    {normalizedTradeSymbol || tradeSideFilter !== "ALL"
+                      ? "No trades match the selected filter."
+                      : "No trades recorded yet."}
+                  </div>
                 </div>
               ) : null}
-              {(tradesQuery.data ?? []).length > 0 ? (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Symbol</TableHead>
-                        <TableHead>Side</TableHead>
-                        <TableHead className="text-right">Qty</TableHead>
-                        <TableHead className="text-right">Price</TableHead>
-                        <TableHead className="text-right">Fees</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(tradesQuery.data ?? []).map((trade) => {
-                        const isEditing = editingTrade?.id === trade._id;
-                        return (
-                          <TableRow key={trade._id}>
-                            <TableCell className="min-w-36">
-                              {isEditing && editingTrade ? (
-                                <Input type="date" value={editingTrade.tradeDate} onChange={(event) => setEditingTrade({ ...editingTrade, tradeDate: event.target.value })} />
-                              ) : (
-                                new Date(trade.tradeDate).toISOString().slice(0, 10)
-                              )}
-                            </TableCell>
-                            <TableCell className="min-w-32">
-                              {isEditing && editingTrade ? (
-                                <Input value={editingTrade.symbol} onChange={(event) => setEditingTrade({ ...editingTrade, symbol: event.target.value })} />
-                              ) : (
-                                trade.symbol
-                              )}
-                            </TableCell>
-                            <TableCell className="min-w-28">
-                              {isEditing && editingTrade ? (
-                                <select
-                                  className="h-10 w-full rounded-md border bg-background px-3 text-sm font-medium outline-none transition focus:ring-2 focus:ring-ring"
-                                  value={editingTrade.side}
-                                  onChange={(event) => setEditingTrade({ ...editingTrade, side: event.target.value as Trade["side"] })}
-                                >
-                                  <option value="BUY">BUY</option>
-                                  <option value="SELL">SELL</option>
-                                </select>
-                              ) : (
-                                trade.side
-                              )}
-                            </TableCell>
-                            <TableCell className="min-w-28 text-right tabular-nums">
-                              {isEditing && editingTrade ? (
-                                <Input type="number" step="0.0001" value={editingTrade.quantity} onChange={(event) => setEditingTrade({ ...editingTrade, quantity: Number(event.target.value) })} />
-                              ) : (
-                                trade.quantity
-                              )}
-                            </TableCell>
-                            <TableCell className="min-w-32 text-right tabular-nums">
-                              {isEditing && editingTrade ? (
-                                <Input type="number" step="0.01" value={editingTrade.price} onChange={(event) => setEditingTrade({ ...editingTrade, price: Number(event.target.value) })} />
-                              ) : (
-                                formatCurrency(trade.price, currency)
-                              )}
-                            </TableCell>
-                            <TableCell className="min-w-28 text-right tabular-nums">
-                              {isEditing && editingTrade ? (
-                                <Input type="number" step="0.01" value={editingTrade.fees} onChange={(event) => setEditingTrade({ ...editingTrade, fees: Number(event.target.value) })} />
-                              ) : (
-                                formatCurrency(trade.fees ?? 0, currency)
-                              )}
-                            </TableCell>
-                            <TableCell className="min-w-40">
-                              <div className="flex justify-end gap-2">
-                                {isEditing ? (
-                                  <>
-                                    <Button size="sm" disabled={updateTradeMutation.isPending} onClick={saveTradeEdit}>
-                                      <Check className="h-4 w-4" />
-                                      Save
-                                    </Button>
-                                    <Button variant="outline" size="sm" onClick={() => setEditingTrade(null)}>
-                                      <X className="h-4 w-4" />
-                                      Cancel
-                                    </Button>
-                                  </>
+              {trades.length > 0 ? (
+                <>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/30 hover:bg-muted/30">
+                          <TableHead className="pl-5">Date</TableHead>
+                          <TableHead>Symbol</TableHead>
+                          <TableHead>Side</TableHead>
+                          <TableHead className="text-right">Qty</TableHead>
+                          <TableHead className="text-right">Price</TableHead>
+                          <TableHead className="text-right">Fees</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                          <TableHead>Source</TableHead>
+                          <TableHead className="pr-5 text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {trades.map((trade) => {
+                          const isEditing = editingTrade?.id === trade._id;
+                          const notional = trade.quantity * trade.price;
+                          return (
+                            <TableRow key={trade._id}>
+                              <TableCell className="min-w-32 pl-5 whitespace-nowrap tabular-nums">
+                                {isEditing && editingTrade ? (
+                                  <Input
+                                    type="date"
+                                    value={editingTrade.tradeDate}
+                                    onChange={(event) => setEditingTrade({ ...editingTrade, tradeDate: event.target.value })}
+                                  />
                                 ) : (
-                                  <>
-                                    <Button variant="outline" size="icon" aria-label={`Edit ${trade.symbol} trade`} onClick={() => beginTradeEdit(trade)}>
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <ConfirmAction
-                                      title="Delete trade?"
-                                      description={`${trade.side} ${trade.quantity} ${trade.symbol} at ${formatCurrency(trade.price, currency)}`}
-                                      confirmLabel="Delete"
-                                      variant="destructive"
-                                      disabled={deleteTradeMutation.isPending}
-                                      onConfirm={() => deleteTradeMutation.mutate(trade._id)}
-                                      trigger={(open) => (
-                                        <Button variant="outline" size="icon" className="text-muted-foreground hover:text-destructive" aria-label={`Delete ${trade.symbol} trade`} onClick={open}>
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      )}
-                                    />
-                                  </>
+                                  new Date(trade.tradeDate).toISOString().slice(0, 10)
                                 )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+                              </TableCell>
+                              <TableCell className="min-w-24">
+                                {isEditing && editingTrade ? (
+                                  <Input
+                                    value={editingTrade.symbol}
+                                    onChange={(event) => setEditingTrade({ ...editingTrade, symbol: event.target.value })}
+                                  />
+                                ) : (
+                                  <Badge variant="secondary" className="font-semibold">
+                                    {trade.symbol}
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="min-w-24">
+                                {isEditing && editingTrade ? (
+                                  <select
+                                    className="h-10 w-full rounded-md border bg-background px-3 text-sm font-medium outline-none transition focus:ring-2 focus:ring-ring"
+                                    value={editingTrade.side}
+                                    onChange={(event) =>
+                                      setEditingTrade({ ...editingTrade, side: event.target.value as Trade["side"] })
+                                    }
+                                  >
+                                    <option value="BUY">BUY</option>
+                                    <option value="SELL">SELL</option>
+                                  </select>
+                                ) : (
+                                  <Badge variant={trade.side === "BUY" ? "success" : "warning"}>{trade.side}</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="min-w-20 text-right tabular-nums">
+                                {isEditing && editingTrade ? (
+                                  <Input
+                                    type="number"
+                                    step="0.0001"
+                                    value={editingTrade.quantity}
+                                    onChange={(event) =>
+                                      setEditingTrade({ ...editingTrade, quantity: Number(event.target.value) })
+                                    }
+                                  />
+                                ) : (
+                                  trade.quantity.toLocaleString()
+                                )}
+                              </TableCell>
+                              <TableCell className="min-w-28 text-right tabular-nums">
+                                {isEditing && editingTrade ? (
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={editingTrade.price}
+                                    onChange={(event) =>
+                                      setEditingTrade({ ...editingTrade, price: Number(event.target.value) })
+                                    }
+                                  />
+                                ) : (
+                                  formatCurrency(trade.price, currency)
+                                )}
+                              </TableCell>
+                              <TableCell className="min-w-24 text-right tabular-nums text-muted-foreground">
+                                {isEditing && editingTrade ? (
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={editingTrade.fees}
+                                    onChange={(event) =>
+                                      setEditingTrade({ ...editingTrade, fees: Number(event.target.value) })
+                                    }
+                                  />
+                                ) : (
+                                  formatCurrency(trade.fees ?? 0, currency)
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right font-medium tabular-nums">
+                                {formatCurrency(notional, currency)}
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-xs text-muted-foreground">
+                                  {trade.source === "CSV" ? "CSV" : "Manual"}
+                                </span>
+                              </TableCell>
+                              <TableCell className="min-w-28 pr-5">
+                                <div className="flex justify-end gap-1.5">
+                                  {isEditing ? (
+                                    <>
+                                      <Button size="sm" disabled={updateTradeMutation.isPending} onClick={saveTradeEdit}>
+                                        <Check className="h-3.5 w-3.5" />
+                                        Save
+                                      </Button>
+                                      <Button variant="outline" size="sm" onClick={() => setEditingTrade(null)}>
+                                        <X className="h-3.5 w-3.5" />
+                                        Cancel
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        aria-label={`Edit ${trade.symbol} trade`}
+                                        title={`Edit ${trade.symbol} trade`}
+                                        onClick={() => beginTradeEdit(trade)}
+                                      >
+                                        <Pencil className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <ConfirmAction
+                                        title="Delete trade?"
+                                        description={`${trade.side} ${trade.quantity} ${trade.symbol} at ${formatCurrency(trade.price, currency)}`}
+                                        confirmLabel="Delete"
+                                        variant="destructive"
+                                        disabled={deleteTradeMutation.isPending}
+                                        onConfirm={() => deleteTradeMutation.mutate(trade._id)}
+                                        trigger={(open) => (
+                                          <Button
+                                            variant="outline"
+                                            size="icon"
+                                            className="h-8 w-8 text-muted-foreground hover:border-destructive/30 hover:text-destructive"
+                                            aria-label={`Delete ${trade.symbol} trade`}
+                                            title={`Delete ${trade.symbol} trade`}
+                                            onClick={open}
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </Button>
+                                        )}
+                                      />
+                                    </>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {tradesMeta && tradesMeta.total > tradesMeta.limit ? (
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/15 px-5 py-3 text-xs text-muted-foreground">
+                      <span className="tabular-nums">
+                        Showing {(tradesMeta.page - 1) * tradesMeta.limit + 1}–
+                        {Math.min(tradesMeta.page * tradesMeta.limit, tradesMeta.total)} of {tradesMeta.total} trades
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          disabled={!tradesMeta.hasPreviousPage || tradesQuery.isFetching}
+                          onClick={() => setTradePage((p) => Math.max(1, p - 1))}
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                          Previous
+                        </Button>
+                        <span className="font-mono text-foreground">
+                          {tradesMeta.page} / {tradesMeta.totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          disabled={!tradesMeta.hasNextPage || tradesQuery.isFetching}
+                          onClick={() => setTradePage((p) => p + 1)}
+                        >
+                          Next
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                </>
               ) : null}
             </CardContent>
           </Card>

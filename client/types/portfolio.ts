@@ -5,6 +5,8 @@ export type Portfolio = {
   description?: string;
   baseCurrency: "USD" | "INR";
   isArchived: boolean;
+  tradeCount?: number;
+  lastTradeDate?: string | null;
   createdAt: string;
   updatedAt: string;
 };

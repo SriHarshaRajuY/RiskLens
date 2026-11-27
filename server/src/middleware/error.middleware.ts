@@ -55,11 +55,25 @@ export function errorMiddleware(error: Error, req: Request, res: Response, _next
 
   if ((error as { code?: number }).code === 11000) {
     const duplicate = error as { keyPattern?: Record<string, unknown> };
-    const isDuplicateEmail = Boolean(duplicate.keyPattern?.email);
+    const keyPattern = duplicate.keyPattern ?? {};
+    let code = "DUPLICATE_RESOURCE";
+    let message = "A resource with the same unique value already exists";
+
+    if (keyPattern.email) {
+      code = "EMAIL_ALREADY_REGISTERED";
+      message = "Email is already registered";
+    } else if (keyPattern.name) {
+      code = "DUPLICATE_PORTFOLIO_NAME";
+      message = "A portfolio with this name already exists";
+    } else if (keyPattern.idempotencyKey) {
+      code = "DUPLICATE_TRADE";
+      message = "This trade already exists in the portfolio";
+    }
+
     res.status(409).json({
       success: false,
-      code: isDuplicateEmail ? "EMAIL_ALREADY_REGISTERED" : "DUPLICATE_RESOURCE",
-      message: isDuplicateEmail ? "Email is already registered" : "A resource with the same unique value already exists",
+      code,
+      message,
       requestId: req.requestId
     });
     return;

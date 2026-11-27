@@ -1,8 +1,11 @@
 import { activityService } from "../activity/activity.service.js";
+import { alertService } from "../alerts/alert.service.js";
 import { portfolioService } from "../portfolio/portfolio.service.js";
+import { snapshotService } from "../snapshots/snapshot.service.js";
 import { buildHoldings, replayTrades, type TradeLedgerEntry } from "../analytics/holdings.service.js";
 import { enqueueAlertEvaluation } from "../../queues/alertEvaluation.queue.js";
 import { enqueueSnapshot } from "../../queues/snapshot.queue.js";
+import { logger } from "../../config/logger.js";
 import { invalidatePortfolioCache } from "../../utils/cache.js";
 import { notFound } from "../../utils/errors.js";
 import { toObjectId } from "../../utils/objectId.js";
@@ -19,6 +22,7 @@ function toLedgerEntry(trade: {
   price: number;
   fees?: number;
   tradeDate: Date;
+  createdAt?: Date;
 }): TradeLedgerEntry {
   return {
     _id: trade._id,
@@ -27,8 +31,29 @@ function toLedgerEntry(trade: {
     quantity: trade.quantity,
     price: trade.price,
     fees: trade.fees,
-    tradeDate: new Date(trade.tradeDate)
+    tradeDate: new Date(trade.tradeDate),
+    createdAt: trade.createdAt ? new Date(trade.createdAt) : undefined
   };
+}
+
+async function syncDerivedStateAfterTradeChange(userId: string, portfolioId: string, requestId?: string): Promise<void> {
+  await invalidatePortfolioCache(portfolioId, requestId);
+
+  try {
+    await snapshotService.generateForPortfolio({ userId, portfolioId, requestId });
+    await invalidatePortfolioCache(portfolioId, requestId);
+    await alertService.evaluate({ userId, portfolioId, requestId });
+  } catch (error) {
+    logger.warn(
+      { requestId, portfolioId, error: error instanceof Error ? error.message : String(error) },
+      "Synchronous post-trade snapshot/alert refresh fell back to background workers"
+    );
+  }
+
+  void Promise.allSettled([
+    enqueueSnapshot({ userId, portfolioId, requestId }),
+    enqueueAlertEvaluation({ userId, portfolioId, requestId })
+  ]);
 }
 
 async function validateLedger(userId: string, portfolioId: string, candidate?: TradeLedgerEntry, excludeTradeId?: string): Promise<void> {
@@ -65,32 +90,41 @@ export const tradeService = {
       });
 
       await Promise.all([
-        invalidatePortfolioCache(portfolioId, requestId),
         activityService.record({
           userId,
           portfolioId,
           type: "TRADE_CREATED",
           message: `${input.side} ${input.quantity} ${input.symbol} at ${input.price}`,
           metadata: { tradeId: trade._id.toString() }
-        })
-      ]);
-
-      void Promise.allSettled([
-        enqueueSnapshot({ userId, portfolioId, requestId }),
-        enqueueAlertEvaluation({ userId, portfolioId, requestId })
+        }),
+        syncDerivedStateAfterTradeChange(userId, portfolioId, requestId)
       ]);
 
       return trade;
     });
   },
 
-  async list(userId: string, portfolioId: string, pagination: Pagination) {
+  async list(
+    userId: string,
+    portfolioId: string,
+    pagination: Pagination,
+    filters: { symbol?: string; side?: "BUY" | "SELL" } = {}
+  ) {
     await portfolioService.getOwned(userId, portfolioId);
-    const query = { userId: toObjectId(userId, "userId"), portfolioId: toObjectId(portfolioId, "portfolioId") };
+    const query: Record<string, unknown> = {
+      userId: toObjectId(userId, "userId"),
+      portfolioId: toObjectId(portfolioId, "portfolioId")
+    };
+    if (filters.symbol) {
+      query.symbol = filters.symbol.trim().toUpperCase();
+    }
+    if (filters.side) {
+      query.side = filters.side;
+    }
 
     const [items, total] = await Promise.all([
       Trade.find(query)
-        .sort({ [pagination.sortBy]: pagination.sortOrder })
+        .sort({ [pagination.sortBy]: pagination.sortOrder, createdAt: pagination.sortOrder })
         .skip(pagination.skip)
         .limit(pagination.limit)
         .lean(),
@@ -115,7 +149,8 @@ export const tradeService = {
         quantity: input.quantity ?? existing.quantity,
         price: input.price ?? existing.price,
         fees: input.fees ?? existing.fees,
-        tradeDate: input.tradeDate ?? existing.tradeDate
+        tradeDate: input.tradeDate ?? existing.tradeDate,
+        createdAt: existing.createdAt
       });
 
       await validateLedger(userId, existing.portfolioId.toString(), candidate, tradeId);
@@ -124,19 +159,14 @@ export const tradeService = {
       await existing.save();
 
       await Promise.all([
-        invalidatePortfolioCache(existing.portfolioId.toString(), requestId),
         activityService.record({
           userId,
           portfolioId: existing.portfolioId,
           type: "TRADE_UPDATED",
           message: `Updated ${existing.symbol} trade`,
           metadata: { tradeId }
-        })
-      ]);
-
-      void Promise.allSettled([
-        enqueueSnapshot({ userId, portfolioId: existing.portfolioId.toString(), requestId }),
-        enqueueAlertEvaluation({ userId, portfolioId: existing.portfolioId.toString(), requestId })
+        }),
+        syncDerivedStateAfterTradeChange(userId, existing.portfolioId.toString(), requestId)
       ]);
 
       return existing;
@@ -152,19 +182,14 @@ export const tradeService = {
       await trade.deleteOne();
 
       await Promise.all([
-        invalidatePortfolioCache(trade.portfolioId.toString(), requestId),
         activityService.record({
           userId,
           portfolioId: trade.portfolioId,
           type: "TRADE_DELETED",
           message: `Deleted ${trade.symbol} trade`,
           metadata: { tradeId }
-        })
-      ]);
-
-      void Promise.allSettled([
-        enqueueSnapshot({ userId, portfolioId: trade.portfolioId.toString(), requestId }),
-        enqueueAlertEvaluation({ userId, portfolioId: trade.portfolioId.toString(), requestId })
+        }),
+        syncDerivedStateAfterTradeChange(userId, trade.portfolioId.toString(), requestId)
       ]);
     });
   },

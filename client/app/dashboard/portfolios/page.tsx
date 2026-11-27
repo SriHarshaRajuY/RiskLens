@@ -157,15 +157,24 @@ export default function PortfoliosPage() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-normal sm:text-3xl">Portfolios</h1>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">Manage portfolios and open detailed analytics workspaces.</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">Manage workspaces and open holdings, trade ledgers, risk metrics, and AI Q&amp;A.</p>
           </div>
+          {portfoliosQuery.data?.length ? (
+            <Badge variant="secondary" className="w-fit tabular-nums">
+              {portfoliosQuery.data.length} {portfoliosQuery.data.length === 1 ? "workspace" : "workspaces"}
+            </Badge>
+          ) : null}
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-2">
           {(portfoliosQuery.data ?? []).map((portfolio) => {
             const portfolioId = mongoId(portfolio._id);
             const isEditing = Boolean(portfolioId && editing?.id === portfolioId);
+            const tradeCount = portfolio.tradeCount ?? 0;
+            const lastTradeLabel = portfolio.lastTradeDate
+              ? new Date(portfolio.lastTradeDate).toISOString().slice(0, 10)
+              : null;
             return (
-              <Card key={portfolioId || portfolio.name} className="flex min-h-48 flex-col overflow-hidden">
+              <Card key={portfolioId || portfolio.name} className="flex min-h-56 flex-col overflow-hidden transition-shadow hover:shadow-md">
                 <CardHeader className="pb-3">
                   {isEditing && editing ? (
                     <div className="space-y-3">
@@ -190,18 +199,31 @@ export default function PortfoliosPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <CardTitle className="text-base font-semibold leading-snug line-clamp-2" title={portfolio.name}>
-                          {portfolio.name}
-                        </CardTitle>
-                        <CardDescription className="mt-1.5 line-clamp-2 text-xs leading-relaxed">
-                          {portfolio.description || "No description"}
-                        </CardDescription>
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <CardTitle className="text-base font-semibold leading-snug" title={portfolio.name}>
+                            {portfolio.name}
+                          </CardTitle>
+                        </div>
+                        <Badge variant="secondary" className="shrink-0 px-2.5 py-0.5 text-xs font-semibold">
+                          {portfolio.baseCurrency}
+                        </Badge>
                       </div>
-                      <Badge variant="secondary" className="shrink-0 text-xs font-semibold px-2 py-0.5">
-                        {portfolio.baseCurrency}
-                      </Badge>
+                      <CardDescription className="line-clamp-3 text-xs leading-relaxed">
+                        {portfolio.description || "No description provided for this workspace."}
+                      </CardDescription>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-xs text-muted-foreground">
+                        <span className="tabular-nums">
+                          <strong className="font-semibold text-foreground">{tradeCount}</strong>{" "}
+                          {tradeCount === 1 ? "recorded trade" : "recorded trades"}
+                        </span>
+                        {lastTradeLabel ? (
+                          <span className="tabular-nums">Latest trade: {lastTradeLabel}</span>
+                        ) : (
+                          <span>Empty ledger</span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </CardHeader>

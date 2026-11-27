@@ -197,7 +197,7 @@ export default function DashboardPage() {
             <RiskScoreCard risk={riskQuery.data} />
           </div>
 
-          <AllocationChart allocation={summary?.allocation ?? []} />
+          <AllocationChart allocation={summary?.allocation ?? []} currency={currency} />
         </div>
       ) : null}
 

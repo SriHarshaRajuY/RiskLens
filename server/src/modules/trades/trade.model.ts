@@ -69,7 +69,16 @@ tradeSchema.index({ userId: 1, portfolioId: 1, tradeDate: -1 });
 tradeSchema.index({ userId: 1, portfolioId: 1, tradeDate: 1, createdAt: 1 });
 tradeSchema.index({ portfolioId: 1, symbol: 1 });
 tradeSchema.index({ portfolioId: 1, tradeDate: 1 });
-tradeSchema.index({ portfolioId: 1, idempotencyKey: 1 }, { unique: true, sparse: true });
+// Use a partial unique index instead of a compound sparse index: in MongoDB, a
+// compound sparse index still indexes docs that have `portfolioId` but no `idempotencyKey`,
+// which previously restricted portfolios to a single manual trade.
+tradeSchema.index(
+  { portfolioId: 1, idempotencyKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { idempotencyKey: { $type: "string" } }
+  }
+);
 
 export type TradeDocument = InferSchemaType<typeof tradeSchema> & { _id: Types.ObjectId };
 

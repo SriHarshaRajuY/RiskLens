@@ -37,7 +37,7 @@ const envSchema = z
     RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900000),
     RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
     AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
-    MARKET_DATA_PROVIDER: z.preprocess(legacyMarketFallbackValue, z.enum(["alpha_vantage", "fallback"]).default("fallback")),
+    MARKET_DATA_PROVIDER: z.preprocess(legacyMarketFallbackValue, z.enum(["yahoo", "alpha_vantage", "fallback"]).default("yahoo")),
     ALPHA_VANTAGE_API_KEY: z.string().trim().optional().default(""),
     MARKET_DATA_FALLBACK: z.preprocess(legacyMarketFallbackValue, z.enum(["fallback", "none"]).default("fallback")),
     CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(45),

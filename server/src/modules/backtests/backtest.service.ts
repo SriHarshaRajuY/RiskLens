@@ -109,7 +109,9 @@ export const backtestService = {
 
     const values = result.equityCurve.map((point) => point.value);
     const metrics = metricsFromEquity(values, input.initialCapital);
-    const dataSource = points.some((point) => point.source === "alpha_vantage") ? "alpha_vantage" : "fallback";
+    const dataSource =
+      points.find((point) => point.source === "yahoo" || point.source === "stooq" || point.source === "alpha_vantage")
+        ?.source ?? "fallback";
 
     const saved = await BacktestResult.create({
       userId: toObjectId(userId, "userId"),
