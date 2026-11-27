@@ -18,12 +18,16 @@ export function useRealtimeNotifications() {
         description: notification.message
       });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["risk"] });
+      queryClient.invalidateQueries({ queryKey: ["risk-narrative"] });
     };
 
     const onUploadProgress = () => {
       queryClient.invalidateQueries({ queryKey: ["uploads"] });
       queryClient.invalidateQueries({ queryKey: ["summary"] });
       queryClient.invalidateQueries({ queryKey: ["holdings"] });
+      queryClient.invalidateQueries({ queryKey: ["risk"] });
+      queryClient.invalidateQueries({ queryKey: ["risk-narrative"] });
       queryClient.invalidateQueries({ queryKey: ["activity"] });
     };
 

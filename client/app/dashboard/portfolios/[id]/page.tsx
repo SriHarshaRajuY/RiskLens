@@ -12,6 +12,7 @@ import { PerformanceChart } from "@/components/charts/PerformanceChart";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { RiskMetricsPanel } from "@/components/dashboard/RiskMetricsPanel";
+import { RiskNarrativeCard } from "@/components/dashboard/RiskNarrativeCard";
 import { RiskScoreCard } from "@/components/dashboard/RiskScoreCard";
 import { TradeForm } from "@/components/forms/TradeForm";
 import { TradeUploadBox } from "@/components/forms/TradeUploadBox";
@@ -47,6 +48,7 @@ function invalidatePortfolioQueries(queryClient: ReturnType<typeof useQueryClien
   queryClient.invalidateQueries({ queryKey: ["summary", portfolioId] });
   queryClient.invalidateQueries({ queryKey: ["holdings", portfolioId] });
   queryClient.invalidateQueries({ queryKey: ["risk", portfolioId] });
+  queryClient.invalidateQueries({ queryKey: ["risk-narrative", portfolioId] });
   queryClient.invalidateQueries({ queryKey: ["returns", portfolioId] });
   queryClient.invalidateQueries({ queryKey: ["trades", portfolioId] });
   queryClient.invalidateQueries({ queryKey: ["activity", portfolioId] });
@@ -131,6 +133,7 @@ export default function PortfolioDetailPage() {
   }, [portfolioId, portfolioReady]);
 
   const summary = summaryQuery.data;
+  const currency = summary?.baseCurrency ?? portfolioQuery.data?.baseCurrency ?? "USD";
   const hasTrades = (summary?.tradeCount ?? 0) > 0;
   const loadingValue = summaryQuery.isLoading ? "Loading" : "-";
 
@@ -198,32 +201,34 @@ export default function PortfolioDetailPage() {
         </div>
         <Button asChild variant="outline" className="w-full sm:w-auto">
           <Link href="/dashboard/portfolios">
-            <ArrowLeft className="h-4 w-4 mr-1.5" />
+            <ArrowLeft className="h-4 w-4" />
             Portfolios
           </Link>
         </Button>
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Value" value={hasTrades ? formatCurrency(summary?.totalPortfolioValue ?? 0) : loadingValue} />
-        <MetricCard title="Invested" value={hasTrades ? formatCurrency(summary?.totalInvestedAmount ?? 0) : loadingValue} />
-        <MetricCard title="Realized" value={hasTrades ? formatCurrency(summary?.realizedPnl ?? 0) : loadingValue} />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard title="Value" value={hasTrades ? formatCurrency(summary?.totalPortfolioValue ?? 0, currency) : loadingValue} />
+        <MetricCard title="Invested" value={hasTrades ? formatCurrency(summary?.totalInvestedAmount ?? 0, currency) : loadingValue} />
+        <MetricCard title="Realized" value={hasTrades ? formatCurrency(summary?.realizedPnl ?? 0, currency) : loadingValue} />
         <MetricCard
           title="Unrealized"
-          value={hasTrades ? formatCurrency(summary?.unrealizedPnl ?? 0) : loadingValue}
+          value={hasTrades ? formatCurrency(summary?.unrealizedPnl ?? 0, currency) : loadingValue}
           tone={(summary?.unrealizedPnl ?? 0) >= 0 ? "good" : "bad"}
         />
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <PerformanceChart data={returnsQuery.data ?? []} />
+        <PerformanceChart data={returnsQuery.data ?? []} currency={currency} />
         <RiskScoreCard risk={riskQuery.data} />
       </div>
 
       <div className="grid gap-5 xl:grid-cols-2">
-        <HoldingsTable holdings={holdingsQuery.data ?? []} />
-        <RiskMetricsPanel risk={riskQuery.data} />
+        <HoldingsTable holdings={holdingsQuery.data ?? []} currency={currency} />
+        <RiskMetricsPanel risk={riskQuery.data} dailyReturn={summary?.dailyReturn} />
       </div>
+
+      <RiskNarrativeCard portfolioId={portfolioId} />
 
       <div className="grid gap-5 xl:grid-cols-2">
         <TradeUploadBox portfolioId={portfolioId} />
@@ -241,7 +246,7 @@ export default function PortfolioDetailPage() {
             {tradesQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading trades...</p> : null}
             {tradesQuery.isError ? (
               <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                Trades could not be loaded. Retry after confirming the API is available.
+                Trades could not be loaded. Please check your connection and try again.
               </div>
             ) : null}
             {!tradesQuery.isLoading && !tradesQuery.isError && (tradesQuery.data ?? []).length === 0 ? (
@@ -303,18 +308,18 @@ export default function PortfolioDetailPage() {
                               trade.quantity
                             )}
                           </TableCell>
-                          <TableCell className="min-w-32 text-right">
+                          <TableCell className="min-w-32 text-right tabular-nums">
                             {isEditing && editingTrade ? (
                               <Input type="number" step="0.01" value={editingTrade.price} onChange={(event) => setEditingTrade({ ...editingTrade, price: Number(event.target.value) })} />
                             ) : (
-                              formatCurrency(trade.price)
+                              formatCurrency(trade.price, currency)
                             )}
                           </TableCell>
-                          <TableCell className="min-w-28 text-right">
+                          <TableCell className="min-w-28 text-right tabular-nums">
                             {isEditing && editingTrade ? (
                               <Input type="number" step="0.01" value={editingTrade.fees} onChange={(event) => setEditingTrade({ ...editingTrade, fees: Number(event.target.value) })} />
                             ) : (
-                              formatCurrency(trade.fees ?? 0)
+                              formatCurrency(trade.fees ?? 0, currency)
                             )}
                           </TableCell>
                           <TableCell className="min-w-40">
@@ -322,28 +327,28 @@ export default function PortfolioDetailPage() {
                               {isEditing ? (
                                 <>
                                   <Button size="sm" disabled={updateTradeMutation.isPending} onClick={saveTradeEdit}>
-                                    <Check className="h-4 w-4 mr-1.5" />
+                                    <Check className="h-4 w-4" />
                                     Save
                                   </Button>
                                   <Button variant="outline" size="sm" onClick={() => setEditingTrade(null)}>
-                                    <X className="h-4 w-4 mr-1.5" />
+                                    <X className="h-4 w-4" />
                                     Cancel
                                   </Button>
                                 </>
                               ) : (
                                 <>
-                                  <Button variant="outline" size="icon" className="h-9 w-9" aria-label={`Edit ${trade.symbol} trade`} onClick={() => beginTradeEdit(trade)}>
+                                  <Button variant="outline" size="icon" aria-label={`Edit ${trade.symbol} trade`} onClick={() => beginTradeEdit(trade)}>
                                     <Pencil className="h-4 w-4" />
                                   </Button>
                                   <ConfirmAction
                                     title="Delete trade?"
-                                    description={`${trade.side} ${trade.quantity} ${trade.symbol} at ${formatCurrency(trade.price)}`}
+                                    description={`${trade.side} ${trade.quantity} ${trade.symbol} at ${formatCurrency(trade.price, currency)}`}
                                     confirmLabel="Delete"
                                     variant="destructive"
                                     disabled={deleteTradeMutation.isPending}
                                     onConfirm={() => deleteTradeMutation.mutate(trade._id)}
                                     trigger={(open) => (
-                                      <Button variant="outline" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive" aria-label={`Delete ${trade.symbol} trade`} onClick={open}>
+                                      <Button variant="outline" size="icon" className="text-muted-foreground hover:text-destructive" aria-label={`Delete ${trade.symbol} trade`} onClick={open}>
                                         <Trash2 className="h-4 w-4" />
                                       </Button>
                                     )}
