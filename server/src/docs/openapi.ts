@@ -97,14 +97,27 @@ export const openApiDocument = {
           metricExplanations: { type: "array", items: { type: "object" } },
           alertNarratives: { type: "array", items: { type: "object" } },
           dataLimitations: { type: "array", items: { type: "string" } },
-          source: { type: "string", enum: ["gemini", "deterministic-fallback"] },
+          source: { type: "string", enum: ["deterministic"] },
+          generatedAt: { type: "string", format: "date-time" },
+          cached: { type: "boolean" },
+          disclaimer: { type: "string" }
+        }
+      },
+      PortfolioQaResponse: {
+        type: "object",
+        properties: {
+          question: { type: "string" },
+          answer: { type: "string" },
+          supportingFacts: { type: "array", items: { type: "string" } },
+          metricsReferenced: { type: "array", items: { type: "string" } },
+          refused: { type: "boolean" },
+          source: { type: "string", enum: ["gemini", "deterministic-fallback", "guardrail"] },
           fallbackReason: {
             type: "string",
             enum: ["missing_api_key", "quota_exceeded", "timeout", "provider_error", "invalid_output"]
           },
           model: { type: "string", nullable: true },
-          generatedAt: { type: "string", format: "date-time" },
-          cached: { type: "boolean" },
+          answeredAt: { type: "string", format: "date-time" },
           disclaimer: { type: "string" }
         }
       }
@@ -162,16 +175,44 @@ export const openApiDocument = {
     "/portfolios/{portfolioId}/risk-narrative": {
       get: {
         tags: ["Analytics"],
-        summary: "Get descriptive, non-advisory risk and alert narrative (Gemini AI with deterministic fallback)",
+        summary: "Get deterministic, non-advisory risk and alert summary",
         security: [{ bearerAuth: [] }, { cookieAuth: [] }],
         parameters: [
           { name: "portfolioId", in: "path", required: true, schema: { type: "string" } },
-          { name: "refresh", in: "query", required: false, schema: { type: "boolean", default: false }, description: "Bypass cache and regenerate narrative" }
+          { name: "refresh", in: "query", required: false, schema: { type: "boolean", default: false }, description: "Bypass cache and recompute summary" }
         ],
         responses: {
           "200": {
-            description: "Descriptive risk narrative",
+            description: "Deterministic risk and alert summary",
             content: { "application/json": { schema: { $ref: "#/components/schemas/RiskNarrative" } } }
+          }
+        }
+      }
+    },
+    "/portfolios/{portfolioId}/qa": {
+      post: {
+        tags: ["Analytics"],
+        summary: "Ask a factual question about portfolio history, risk, holdings, or alerts (Gemini AI with deterministic fallback)",
+        security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+        parameters: [{ name: "portfolioId", in: "path", required: true, schema: { type: "string" } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["question"],
+                properties: {
+                  question: { type: "string", example: "Why did my drawdown jump last week?" }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          "200": {
+            description: "Factual Q&A response",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/PortfolioQaResponse" } } }
           }
         }
       }

@@ -51,9 +51,11 @@ export type RiskMetrics = {
   insufficientHistory: boolean;
 };
 
-export type NarrativeSource = "gemini" | "deterministic-fallback";
+export type NarrativeSource = "deterministic";
 
-export type NarrativeFallbackReason =
+export type QaSource = "gemini" | "deterministic-fallback" | "guardrail";
+
+export type QaFallbackReason =
   | "missing_api_key"
   | "quota_exceeded"
   | "timeout"
@@ -81,9 +83,20 @@ export type RiskNarrative = {
   alertNarratives: AlertNarrativeItem[];
   dataLimitations: string[];
   source: NarrativeSource;
-  fallbackReason?: NarrativeFallbackReason;
-  model: string | null;
   generatedAt: string;
   cached: boolean;
+  disclaimer: string;
+};
+
+export type PortfolioQaResponse = {
+  question: string;
+  answer: string;
+  supportingFacts: string[];
+  metricsReferenced: string[];
+  refused: boolean;
+  source: QaSource;
+  fallbackReason?: QaFallbackReason;
+  model: string | null;
+  answeredAt: string;
   disclaimer: string;
 };

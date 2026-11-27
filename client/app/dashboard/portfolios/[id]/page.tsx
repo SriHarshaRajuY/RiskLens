@@ -11,6 +11,7 @@ import { ActivityFeed } from "@/components/activity/ActivityFeed";
 import { PerformanceChart } from "@/components/charts/PerformanceChart";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
 import { MetricCard } from "@/components/dashboard/MetricCard";
+import { PortfolioQaPanel } from "@/components/dashboard/PortfolioQaPanel";
 import { RiskMetricsPanel } from "@/components/dashboard/RiskMetricsPanel";
 import { RiskNarrativeCard } from "@/components/dashboard/RiskNarrativeCard";
 import { RiskScoreCard } from "@/components/dashboard/RiskScoreCard";
@@ -229,6 +230,8 @@ export default function PortfolioDetailPage() {
       </div>
 
       <RiskNarrativeCard portfolioId={portfolioId} />
+
+      <PortfolioQaPanel portfolioId={portfolioId} />
 
       <div className="grid gap-5 xl:grid-cols-2">
         <TradeUploadBox portfolioId={portfolioId} />

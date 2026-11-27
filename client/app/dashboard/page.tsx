@@ -7,6 +7,7 @@ import { ActivityFeed } from "@/components/activity/ActivityFeed";
 import { AllocationChart } from "@/components/charts/AllocationChart";
 import { PerformanceChart } from "@/components/charts/PerformanceChart";
 import { MetricCard } from "@/components/dashboard/MetricCard";
+import { PortfolioQaPanel } from "@/components/dashboard/PortfolioQaPanel";
 import { RiskMetricsPanel } from "@/components/dashboard/RiskMetricsPanel";
 import { RiskNarrativeCard } from "@/components/dashboard/RiskNarrativeCard";
 import { RiskScoreCard } from "@/components/dashboard/RiskScoreCard";
@@ -172,6 +173,8 @@ export default function DashboardPage() {
       </div>
 
       <RiskNarrativeCard portfolioId={selectedPortfolioId} />
+
+      <PortfolioQaPanel portfolioId={selectedPortfolioId} />
 
       <div className="grid gap-5 xl:grid-cols-2">
         <ActivityFeed items={activityQuery.data ?? []} />

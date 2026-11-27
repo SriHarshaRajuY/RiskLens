@@ -11,8 +11,7 @@ import {
   FileText,
   Info,
   RefreshCw,
-  ShieldCheck,
-  Sparkles
+  ShieldCheck
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -21,23 +20,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRiskNarrative } from "@/hooks/useRiskNarrative";
 import { getApiErrorMessage } from "@/lib/api";
-import type { AlertNarrativeItem, NarrativeFallbackReason, RiskNarrative } from "@/types/analytics";
+import type { AlertNarrativeItem, RiskNarrative } from "@/types/analytics";
 
 type NarrativeTab = "metrics" | "alerts" | "notes";
-
-function fallbackLabel(reason?: NarrativeFallbackReason): string {
-  switch (reason) {
-    case "missing_api_key":
-      return "Built-in Risk Engine";
-    case "quota_exceeded":
-      return "Standard Engine · AI Busy";
-    case "timeout":
-    case "invalid_output":
-    case "provider_error":
-    default:
-      return "Standard Engine";
-  }
-}
 
 function alertStatusBadge(status: AlertNarrativeItem["status"]) {
   if (status === "BREACHED") {
@@ -61,8 +46,8 @@ function alertStatusBadge(status: AlertNarrativeItem["status"]) {
 
 function formatAuditCopy(data: RiskNarrative): string {
   const lines: string[] = [
-    "RISKLENS DESCRIPTIVE RISK & ALERT NARRATIVE",
-    `Generated: ${new Date(data.generatedAt).toLocaleString()} | Engine: ${data.source}${data.model ? ` (${data.model})` : ""}`,
+    "RISKLENS RISK & ALERT SUMMARY",
+    `Generated: ${new Date(data.generatedAt).toLocaleString()} | Engine: Built-in Risk Engine`,
     "",
     "EXECUTIVE SUMMARY",
     data.executiveSummary,
@@ -85,7 +70,7 @@ function formatAuditCopy(data: RiskNarrative): string {
   }
 
   if (data.dataLimitations.length > 0) {
-    lines.push("", "DATA LIMITATIONS", ...data.dataLimitations.map((d) => `- ${d}`));
+    lines.push("", "DATA NOTES", ...data.dataLimitations.map((d) => `- ${d}`));
   }
 
   lines.push("", `DISCLAIMER: ${data.disclaimer}`);
@@ -104,10 +89,10 @@ export function RiskNarrativeCard({
 
   async function handleRefresh(): Promise<void> {
     try {
-      const updated = await refresh();
-      toast.success(updated.source === "gemini" ? "Risk summary refreshed with AI" : "Risk summary refreshed");
+      await refresh();
+      toast.success("Risk summary refreshed");
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Could not regenerate risk narrative"));
+      toast.error(getApiErrorMessage(err, "Could not refresh risk summary"));
     }
   }
 
@@ -115,7 +100,7 @@ export function RiskNarrativeCard({
     if (!data) return;
     try {
       await navigator.clipboard.writeText(formatAuditCopy(data));
-      toast.success("Narrative report copied to clipboard");
+      toast.success("Summary copied to clipboard");
     } catch {
       toast.error("Could not copy to clipboard");
     }
@@ -128,12 +113,12 @@ export function RiskNarrativeCard({
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `risklens-narrative-${new Date(data.generatedAt).toISOString().slice(0, 10)}.txt`;
+    link.download = `risklens-summary-${new Date(data.generatedAt).toISOString().slice(0, 10)}.txt`;
     document.body.appendChild(link);
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-    toast.success("Audit memo downloaded");
+    toast.success("Summary report downloaded");
   }
 
   if (isLoading) {
@@ -158,12 +143,12 @@ export function RiskNarrativeCard({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Descriptive Risk &amp; Alert Narrator</CardTitle>
-          <CardDescription>Factual, backward-looking explanation of computed risk metrics and alert states.</CardDescription>
+          <CardTitle>Risk &amp; Alert Summary</CardTitle>
+          <CardDescription>Factual, backward-looking explanation of computed risk figures and alert thresholds.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            {getApiErrorMessage(error, "Risk narrative could not be loaded right now.")}
+            {getApiErrorMessage(error, "Risk summary could not be loaded right now.")}
           </p>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             Retry
@@ -173,7 +158,6 @@ export function RiskNarrativeCard({
     );
   }
 
-  const isGemini = data.source === "gemini";
   const breachedCount = data.alertNarratives.filter((item) => item.status === "BREACHED").length;
 
   return (
@@ -182,22 +166,10 @@ export function RiskNarrativeCard({
         <div className="space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <CardTitle className="flex items-center gap-2 text-lg">
-              {isGemini ? (
-                <Sparkles className="h-5 w-5 text-primary" />
-              ) : (
-                <Cpu className="h-5 w-5 text-muted-foreground" />
-              )}
+              <Cpu className="h-5 w-5 text-primary" />
               Risk &amp; Alert Summary
             </CardTitle>
-            {isGemini ? (
-              <Badge variant="secondary" className="border-primary/30 bg-primary/10 text-primary">
-                AI Enhanced
-              </Badge>
-            ) : (
-              <Badge variant="secondary">
-                {fallbackLabel(data.fallbackReason)}
-              </Badge>
-            )}
+            <Badge variant="secondary">Built-in Risk Engine</Badge>
           </div>
           <CardDescription>
             Factual, backward-looking explanation of computed risk figures and alert thresholds.
@@ -243,9 +215,9 @@ export function RiskNarrativeCard({
             onClick={() => setActiveTab("alerts")}
           >
             <AlertTriangle className="h-3.5 w-3.5" />
-            Alerts ({data.alertNarratives.length})
+            <span>Alerts ({data.alertNarratives.length})</span>
             {breachedCount > 0 ? (
-              <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-semibold leading-none text-destructive-foreground">
+              <span className="ml-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-semibold leading-none text-destructive-foreground">
                 {breachedCount} breached
               </span>
             ) : null}
@@ -305,7 +277,7 @@ export function RiskNarrativeCard({
                       <span className="text-sm font-semibold">{alert.alertType.replaceAll("_", " ")}</span>
                       {alertStatusBadge(alert.status)}
                     </div>
-                    <span className="font-mono text-xs text-muted-foreground">
+                    <span className="font-mono text-xs tabular-nums text-muted-foreground">
                       Observed {alert.currentValueLabel} · Threshold {alert.thresholdLabel}
                     </span>
                   </div>
@@ -319,7 +291,7 @@ export function RiskNarrativeCard({
         {activeTab === "notes" ? (
           data.dataLimitations.length === 0 ? (
             <div key="notes-empty" className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground animate-in fade-in duration-150">
-              All trade, snapshot, and alert inputs are present for this narrative.
+              All trade, snapshot, and alert inputs are present for this summary.
             </div>
           ) : (
             <ul key="notes" className="space-y-2 animate-in fade-in duration-150">

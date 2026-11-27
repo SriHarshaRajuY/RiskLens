@@ -98,7 +98,16 @@
         { "name": "Holdings", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios/{{portfolioId}}/holdings" } },
         { "name": "Risk Metrics", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios/{{portfolioId}}/risk" } },
         { "name": "Returns", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios/{{portfolioId}}/returns" } },
-        { "name": "Descriptive Risk Narrative", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios/{{portfolioId}}/risk-narrative" } }
+        { "name": "Descriptive Risk Summary", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios/{{portfolioId}}/risk-narrative" } },
+        {
+          "name": "Portfolio Q&A",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/portfolios/{{portfolioId}}/qa",
+            "body": { "mode": "raw", "raw": "{\n  \"question\": \"Why did my drawdown jump last week?\"\n}" }
+          }
+        }
       ]
     },
     {

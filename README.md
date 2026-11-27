@@ -19,7 +19,7 @@ RiskLens is a full-stack TypeScript application built with a separate Next.js fr
 
 - [Product Overview](#product-overview)
 - [Core Features](#core-features)
-- [Descriptive Risk & Alert Narrator](#descriptive-risk--alert-narrator)
+- [Risk & Alert Summary + Portfolio Q&A](#risk--alert-summary--portfolio-qa)
 - [Tech Stack](#tech-stack)
 - [System Architecture](#system-architecture)
 - [Backend Architecture](#backend-architecture)
@@ -53,47 +53,46 @@ The project is intentionally not a trading bot. It does not place orders, connec
 | Trades | Manual trade entry, paginated trade history, oversell prevention |
 | CSV imports | Header validation, row validation, duplicate detection, async BullMQ processing |
 | Analytics | Holdings, allocation, realized P&L, unrealized P&L, returns, risk metrics |
-| Risk Narrator | Descriptive, non-advisory explanations of risk metrics and alert states (Gemini AI + deterministic fallback) |
+| Risk Summary | Deterministic, zero-hallucination explanations of risk metrics and alert threshold states |
+| Portfolio Q&A | Free-form factual Q&A on drawdown, holdings, P&L, and alerts (Gemini AI + compliance guardrails + deterministic fallback) |
 | Alerts | Daily loss, max drawdown, concentration, and volatility thresholds |
 | Notifications | Realtime and persisted notification feed with read/unread state |
 | Backtesting | Buy-and-hold and moving-average crossover strategy results |
 | Operations | Admin runtime metrics and queue observability |
 
-## Descriptive Risk & Alert Narrator
+## Risk & Alert Summary + Portfolio Q&A
 
-RiskLens includes a regulator-safe **Descriptive Risk & Alert Narrator** (`GET /api/v1/portfolios/:portfolioId/risk-narrative`) integrated into the Portfolio Overview, Portfolio Detail, and Alert Center views.
+RiskLens cleanly separates deterministic reporting from free-form AI Q&A:
+
+1. **Risk & Alert Summary (`GET /api/v1/portfolios/:portfolioId/risk-narrative`):**
+   - Runs **100% deterministically** on computed metrics and alert states (zero LLM dependency, zero hallucination risk, instant response, \$0 cost).
+   - Supports 1-click copy and `.txt` export with a mandatory non-advisory disclaimer.
+2. **Portfolio Q&A Assistant (`POST /api/v1/portfolios/:portfolioId/qa`):**
+   - Answers free-form factual questions (e.g., *"Why did my drawdown jump last week?"*, *"Which holding drives my concentration risk?"*) using Gemini AI when `GEMINI_API_KEY` is configured, with automatic fallback to a built-in deterministic Q&A engine.
 
 ```mermaid
 flowchart TD
-  Req["GET /portfolios/:id/risk-narrative"] --> Cache["Check Redis / Memory Cache"]
-  Cache -->|Hit| ReturnCached["Return cached narrative"]
-  Cache -->|Miss / Refresh| Compute["Gather anonymized metrics & alert states"]
-  Compute --> KeyCheck{"GEMINI_API_KEY configured?"}
-  KeyCheck -->|No| Fallback["Deterministic Audit Engine"]
+  Req["POST /portfolios/:id/qa"] --> PreGuard{"Pre-LLM Advisory / Prediction Check"}
+  PreGuard -->|Advisory or predictive| Refuse["Return non-advisory guardrail notice"]
+  PreGuard -->|Factual question| Context["Build zero-PII ledger, snapshot & alert context"]
+  Context --> KeyCheck{"GEMINI_API_KEY configured?"}
+  KeyCheck -->|No| Fallback["Built-in Deterministic Q&A Engine"]
   KeyCheck -->|Yes| Gemini["Call Gemini generateContent (JSON schema)"]
-  Gemini -->|200 OK| Guardrail{"Zod + Non-Advisory Guardrail"}
-  Guardrail -->|Pass| Store["Cache & audit-log (source: gemini)"]
-  Guardrail -->|Advisory text or invalid JSON| Fallback
+  Gemini -->|200 OK| PostGuard{"Zod + Non-Advisory Guardrail"}
+  PostGuard -->|Pass| ReturnAi["Audit-log & return (source: gemini)"]
+  PostGuard -->|Violation or invalid JSON| Fallback
   Gemini -->|429 Quota / Timeout / Error| Fallback
-  Fallback --> StoreFallback["Cache & audit-log (source: deterministic-fallback)"]
+  Fallback --> ReturnFallback["Audit-log & return (source: deterministic-fallback)"]
 ```
 
 ### Regulatory & Reliability Guarantees
 
-- **Strictly non-advisory:** Explains only already-computed mathematical definitions, historical ledger drivers, and current alert threshold statuses. System instructions and a post-generation compliance guardrail reject buy, sell, rebalance, or predictive phrasing and always attach a non-advisory recordkeeping disclaimer.
-- **Zero PII sent externally:** Prompts include only anonymized portfolio metrics, top 5 allocation symbols/weights, P&L contributors, and alert threshold states—never user names, emails, tokens, or account identifiers.
-- **Automatic deterministic fallback:** Works out-of-the-box without an API key and seamlessly degrades to a deterministic rule-based narrative if Gemini hits quota limits (`429` / `RESOURCE_EXHAUSTED`), times out (`GEMINI_TIMEOUT_MS`), returns invalid output, or triggers the non-advisory guardrail.
-- **Export & audit trail:** Users can copy or export a formatted `.txt` audit memo in one click, and fresh generations are recorded in `activitylogs` (`RISK_NARRATIVE_GENERATED`).
+- **Strictly non-advisory (Pre- & Post-Guardrails):** Advisory or predictive questions (*"Should I sell AAPL?"*, *"Will NVDA rise next month?"*) are refused before calling Gemini, and all AI responses pass Zod validation + a post-generation compliance filter.
+- **Zero PII sent externally:** Only anonymized portfolio metrics, recent snapshots with drawdown-from-peak, recent trade history, holdings, and alert statuses are included—never user names, emails, tokens, or database IDs.
+- **Automatic deterministic fallback:** Works out-of-the-box without an API key and degrades seamlessly to the built-in Q&A engine if Gemini hits quota limits (`429`), times out (`GEMINI_TIMEOUT_MS`), or returns invalid output.
+- **Audit trail:** Q&A interactions are recorded in `activitylogs` (`PORTFOLIO_QA_ASKED`) with source and guardrail status.
 
-| Fallback Reason | Trigger Condition | UI Engine Badge |
-| --- | --- | --- |
-| `missing_api_key` | `GEMINI_API_KEY` is empty or unset | `Deterministic Audit Engine` |
-| `quota_exceeded` | Gemini returns HTTP `429` or `RESOURCE_EXHAUSTED` | `Fallback · Quota Limit` |
-| `timeout` | Gemini request exceeds `GEMINI_TIMEOUT_MS` | `Fallback · Timeout` |
-| `invalid_output` | Malformed JSON, Zod mismatch, or guardrail rejection | `Fallback · Guardrail` |
-| `provider_error` | Network or non-429 upstream HTTP error | `Fallback · Offline` |
-
-> **Setup note:** The entire backend and frontend are ready—only setting `GEMINI_API_KEY` in `server/.env` (or Render environment variables) is required to enable Gemini AI responses. Leaving it blank runs the Deterministic Audit Engine automatically.
+> **Setup note:** The **Risk & Alert Summary** needs no API key at all. Adding `GEMINI_API_KEY` in `server/.env` (or Render environment variables) enables AI-enhanced answers in the **Portfolio Q&A Assistant**; leaving it blank runs the built-in Q&A engine automatically.
 
 ## Tech Stack
 
@@ -292,7 +291,7 @@ Important route groups:
 | Portfolios | `/portfolios`, `/portfolios/:portfolioId` |
 | Trades | `/portfolios/:portfolioId/trades`, `/trades/:tradeId` |
 | Uploads | `/portfolios/:portfolioId/trades/upload`, `/uploads`, `/uploads/:uploadJobId` |
-| Analytics | `/summary`, `/holdings`, `/risk`, `/returns`, `/pnl`, `/risk-narrative` under portfolio routes |
+| Analytics | `/summary`, `/holdings`, `/risk`, `/returns`, `/pnl`, `/risk-narrative`, `/qa` under portfolio routes |
 | Alerts | `/portfolios/:portfolioId/alerts`, `/alerts/:alertId` |
 | Notifications | `/notifications`, `/notifications/:notificationId/read` |
 | Backtests | `/backtests`, `/backtests/:backtestId` |
@@ -394,7 +393,7 @@ Important server variables:
 | `COOKIE_SAME_SITE` | `lax` locally, `none` for cross-site Vercel/Render cookies |
 | `MARKET_DATA_PROVIDER` | `fallback` or `alpha_vantage` |
 | `ALPHA_VANTAGE_API_KEY` | Optional market data provider key |
-| `GEMINI_API_KEY` | Optional Gemini API key for AI-generated risk & alert narratives (leave empty for deterministic fallback) |
+| `GEMINI_API_KEY` | Optional Gemini API key for the Portfolio Q&A Assistant (leave empty for built-in Q&A engine) |
 | `GEMINI_MODEL` | Gemini model ID (default: `gemini-2.5-flash`) |
 | `GEMINI_TIMEOUT_MS` | Gemini request timeout in ms before deterministic fallback (default: `8000`) |
 | `GEMINI_CACHE_TTL_SECONDS` | Redis/memory cache TTL in seconds for generated narratives (default: `300`) |
