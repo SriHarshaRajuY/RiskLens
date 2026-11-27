@@ -35,11 +35,11 @@ type NavItem = {
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Overview", subtitle: "Portfolio performance, risk score & narrator", icon: Gauge },
   { href: "/dashboard/portfolios", label: "Portfolios", subtitle: "Create and manage portfolio workspaces", icon: BriefcaseBusiness },
-  { href: "/dashboard/imports", label: "Imports", subtitle: "CSV trade ingestion jobs & row diagnostics", icon: UploadCloud },
+  { href: "/dashboard/imports", label: "Imports", subtitle: "Track spreadsheet uploads and review import results", icon: UploadCloud },
   { href: "/dashboard/alerts", label: "Alerts", subtitle: "Threshold rules & breach explanations", icon: ShieldAlert },
-  { href: "/dashboard/notifications", label: "Notifications", subtitle: "Realtime alert & import inbox", icon: Bell },
+  { href: "/dashboard/notifications", label: "Notifications", subtitle: "Live alert & import inbox", icon: Bell },
   { href: "/dashboard/backtest", label: "Backtest", subtitle: "Historical strategy simulation lab", icon: ChartSpline },
-  { href: "/dashboard/operations", label: "Operations", subtitle: "API latency, cache & queue telemetry", icon: ServerCog, adminOnly: true }
+  { href: "/dashboard/operations", label: "Operations", subtitle: "System health, response times, and background jobs", icon: ServerCog, adminOnly: true }
 ];
 
 function userInitials(name?: string, email?: string): string {

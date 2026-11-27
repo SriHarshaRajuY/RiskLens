@@ -66,7 +66,7 @@ export function TradeUploadBox({ portfolioId }: { portfolioId: string }) {
     onSuccess: (job) => {
       setUploadJobId(job._id);
       setQueuedDelayVisible(false);
-      toast.success("CSV upload queued for processing");
+      toast.success("Spreadsheet uploaded — importing trades now");
       queryClient.invalidateQueries({ queryKey: ["uploads"] });
     },
     onError: (error) => toast.error(getApiErrorMessage(error, "Upload failed"))
@@ -141,7 +141,7 @@ export function TradeUploadBox({ portfolioId }: { portfolioId: string }) {
           disabled={mutation.isPending}
         >
           <Upload className="h-4 w-4" />
-          {mutation.isPending ? "Queueing upload..." : "Upload trades"}
+          {mutation.isPending ? "Uploading..." : "Upload trades"}
         </Button>
 
         {displayStatus ? (

@@ -108,7 +108,7 @@ export default function ImportsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Upload jobs</CardTitle>
+          <CardTitle>Recent uploads</CardTitle>
         </CardHeader>
         <CardContent>
           {uploadsQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading import history...</p> : null}

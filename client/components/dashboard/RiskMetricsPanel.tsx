@@ -56,7 +56,7 @@ export function RiskMetricsPanel({ risk, dailyReturn }: { risk?: RiskMetrics; da
     <Card>
       <CardHeader className="pb-4">
         <CardTitle>Risk metrics</CardTitle>
-        <CardDescription>Deterministic dispersion, tail loss, and concentration indicators</CardDescription>
+        <CardDescription>Key measures of portfolio swings, downside exposure, and concentration</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
         {risk.insufficientHistory ? (

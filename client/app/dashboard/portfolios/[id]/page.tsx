@@ -246,7 +246,7 @@ export default function PortfolioDetailPage() {
             {tradesQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading trades...</p> : null}
             {tradesQuery.isError ? (
               <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                Trades could not be loaded. Retry after confirming the API is available.
+                Trades could not be loaded. Please check your connection and try again.
               </div>
             ) : null}
             {!tradesQuery.isLoading && !tradesQuery.isError && (tradesQuery.data ?? []).length === 0 ? (

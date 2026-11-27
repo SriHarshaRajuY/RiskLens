@@ -54,7 +54,7 @@ export default function NotificationsPage() {
   return (
     <div className="space-y-6">
       <WorkspaceHeader
-        eyebrow="Realtime feed"
+        eyebrow="Live inbox"
         title="Notifications"
         description={
           isPortfolioScoped && activePortfolio

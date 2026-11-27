@@ -5,51 +5,51 @@ import {
   BarChart3,
   BellRing,
   CheckCircle2,
-  DatabaseZap,
   FileText,
   LineChart,
   LockKeyhole,
   ShieldCheck,
   Sparkles,
-  UploadCloud
+  UploadCloud,
+  Zap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const capabilities = [
   {
-    title: "Trade history intake",
-    description: "Import CSV trade ledgers or add records manually with strict validation and row-level error diagnostics.",
+    title: "Spreadsheet & manual tracking",
+    description: "Upload trade CSV files or enter individual trades with automatic checks and clear row-by-row feedback.",
     icon: UploadCloud
   },
   {
-    title: "Portfolio analytics",
-    description: "Track open holdings, allocation weights, realized and unrealized P&L, and daily return curves.",
+    title: "Holdings & P&L analytics",
+    description: "View open positions, allocation weights, realized and unrealized P&L, and daily portfolio performance.",
     icon: LineChart
   },
   {
-    title: "Risk monitoring",
-    description: "Configure portfolio thresholds for daily loss, max drawdown, concentration, and annualized volatility.",
+    title: "Custom risk alerts",
+    description: "Set personal thresholds for daily loss, max drawdown, single-stock concentration, and volatility.",
     icon: BellRing
   },
   {
-    title: "Descriptive risk narrator",
-    description: "Read factual, audit-ready explanations of risk metrics and alert breaches with automatic fallback.",
+    title: "Plain-English risk summary",
+    description: "Read clear, factual explanations of what your risk score means and which holdings drove each alert.",
     icon: FileText
   }
 ];
 
 const workflow = [
-  ["Create portfolio", "Set up a dedicated USD or INR workspace for trades, alerts, activity, and analytics."],
-  ["Import trades", "Upload CSV history or enter trades manually with oversell protection before records are saved."],
-  ["Review analytics & narrative", "Inspect risk score drivers, allocation weights, and non-advisory metric explanations."],
-  ["Evaluate strategy", "Run buy-and-hold and moving-average crossover backtests on historical daily price series."]
+  ["Create your portfolio", "Set up a dedicated USD or INR workspace for your trades, alerts, and performance history."],
+  ["Add or upload trades", "Import a trade spreadsheet or log trades one by one with built-in quantity checks."],
+  ["Review risk & alerts", "See your risk score, concentration breakdown, and plain-English explanations of any threshold breach."],
+  ["Test simple strategies", "Compare historical buy-and-hold and moving-average results without placing real orders."]
 ];
 
 const platform = [
-  ["Regulator-safe reporting", "Risk narratives explain historical math and ledger facts without investment advice."],
-  ["Background CSV workers", "Large CSV uploads process asynchronously via BullMQ while you continue reviewing analytics."],
-  ["Realtime synchronization", "Socket.IO pushes live upload progress, triggered alerts, and notifications without manual reloads."],
-  ["Deterministic resilience", "Both market pricing and the risk narrator automatically fall back to deterministic engines offline."]
+  ["Factual, non-advisory clarity", "Risk summaries explain your own numbers and historical trades clearly—never pushy buy or sell tips."],
+  ["Smooth background imports", "Upload large trade spreadsheets without waiting; your workspace stays fast while records import."],
+  ["Instant live updates", "See upload progress, triggered risk alerts, and activity updates appear automatically—no refresh needed."],
+  ["Always-on reliability", "Built-in safeguards keep your portfolio analytics and risk summaries available at all times."]
 ];
 
 function PreviewPanel() {
@@ -58,12 +58,12 @@ function PreviewPanel() {
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3.5">
         <div>
           <p className="text-sm font-semibold text-slate-950">Core Equity Workspace</p>
-          <p className="text-xs text-slate-500">Holdings, risk posture, alerts &amp; audit narrator</p>
+          <p className="text-xs text-slate-500">Holdings, risk score, alerts &amp; plain-English summary</p>
         </div>
         <div className="flex items-center gap-2 text-xs font-medium">
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
             <CheckCircle2 className="h-3 w-3" />
-            Monitored
+            Protected
           </span>
           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">USD</span>
         </div>
@@ -73,7 +73,7 @@ function PreviewPanel() {
         <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Portfolio value</p>
           <p className="mt-1 text-lg font-semibold tabular-nums text-slate-950">$148,420</p>
-          <p className="mt-0.5 text-[11px] font-medium text-emerald-700">+$16,240 total P&amp;L</p>
+          <p className="mt-0.5 text-[11px] font-medium text-emerald-700">+$16,240 total gain</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Risk score</p>
@@ -81,22 +81,22 @@ function PreviewPanel() {
           <p className="mt-0.5 text-[11px] font-medium text-amber-700">Medium exposure</p>
         </div>
         <div className="col-span-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3 sm:col-span-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Concentration</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Top position</p>
           <p className="mt-1 text-lg font-semibold tabular-nums text-slate-950">31.4%</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">Top holding: AAPL</p>
+          <p className="mt-0.5 text-[11px] text-slate-500">AAPL concentration</p>
         </div>
       </div>
 
       <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3.5">
         <div className="mb-3 flex items-center justify-between">
-          <p className="text-xs font-semibold text-slate-900">Portfolio valuation curve</p>
+          <p className="text-xs font-semibold text-slate-900">Portfolio value over time</p>
           <BarChart3 className="h-4 w-4 text-emerald-700" />
         </div>
         <div className="flex h-24 items-end gap-1.5" aria-hidden="true">
           {[38, 44, 41, 52, 49, 61, 58, 66, 63, 75, 72, 86, 84, 92].map((height, index) => (
             <div
               key={index}
-              className="flex-1 rounded-t bg-gradient-to-t from-emerald-700/80 to-teal-500/75 transition-all"
+              className="flex-1 rounded-t bg-gradient-to-t from-emerald-700/80 to-teal-500/75"
               style={{ height: `${height}%` }}
             />
           ))}
@@ -107,15 +107,15 @@ function PreviewPanel() {
         <div className="flex items-center justify-between gap-2">
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-900">
             <Sparkles className="h-3.5 w-3.5 text-emerald-700" />
-            Descriptive Risk &amp; Alert Narrator
+            Risk &amp; Alert Summary
           </span>
           <span className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 shadow-sm">
             <ShieldCheck className="h-3 w-3 text-emerald-700" />
-            Non-advisory
+            Informational only
           </span>
         </div>
         <p className="mt-2 text-xs leading-relaxed text-slate-700">
-          Based on 24 recorded trades across 5 holdings, composite risk sits at 42/100 (Medium). AAPL represents 31.4% of open value, exceeding your 25.0% concentration rule.
+          Based on 24 recorded trades across 5 holdings, your risk score is 42/100 (Medium). AAPL makes up 31.4% of your portfolio value, crossing your 25.0% alert limit.
         </p>
       </div>
     </div>
@@ -126,33 +126,35 @@ export default function LandingPage() {
   return (
     <main className="min-h-screen bg-[#f5f7f2] text-slate-950">
       <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-[#f5f7f2]/90 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Link
             href="/"
-            className="flex items-center gap-2.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+            className="flex items-center gap-2.5 text-sm font-semibold text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
           >
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-700 text-white shadow-sm">
               <Activity className="h-5 w-5" />
             </span>
-            RiskLens
+            <span className="text-base tracking-tight">RiskLens</span>
           </Link>
-          <nav className="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex" aria-label="Primary navigation">
-            <a href="#capabilities" className="transition-colors hover:text-slate-950">
-              Capabilities
+
+          <nav className="hidden items-center gap-1 rounded-full border border-slate-200/80 bg-white/75 p-1 text-sm font-medium text-slate-600 shadow-sm md:flex" aria-label="Primary navigation">
+            <a href="#capabilities" className="rounded-full px-3.5 py-1.5 transition-colors hover:bg-slate-100 hover:text-slate-950">
+              Features
             </a>
-            <a href="#workflow" className="transition-colors hover:text-slate-950">
-              Workflow
+            <a href="#workflow" className="rounded-full px-3.5 py-1.5 transition-colors hover:bg-slate-100 hover:text-slate-950">
+              How it works
             </a>
-            <a href="#platform" className="transition-colors hover:text-slate-950">
-              Platform
+            <a href="#platform" className="rounded-full px-3.5 py-1.5 transition-colors hover:bg-slate-100 hover:text-slate-950">
+              Trust &amp; reliability
             </a>
           </nav>
-          <div className="flex items-center gap-2.5">
-            <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+
+          <div className="flex items-center gap-2">
+            <Button asChild variant="ghost" size="sm" className="text-slate-700 hover:bg-white/80 hover:text-slate-950">
               <Link href="/login">Sign in</Link>
             </Button>
             <Button asChild size="sm">
-              <Link href="/register">Create account</Link>
+              <Link href="/register">Get started</Link>
             </Button>
           </div>
         </div>
@@ -162,15 +164,15 @@ export default function LandingPage() {
         <div className="absolute inset-0 dashboard-grid opacity-65" />
         <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.02fr_0.98fr] lg:px-8 lg:py-24">
           <div className="max-w-xl animate-page-enter">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/85 px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/90 px-3.5 py-1 text-xs font-semibold text-emerald-800 shadow-sm">
               <ShieldCheck className="h-3.5 w-3.5" />
-              Portfolio risk &amp; audit workspace
+              Personal portfolio &amp; risk workspace
             </div>
             <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
               Clear portfolio risk, zero guesswork.
             </h1>
             <p className="mt-5 text-base leading-7 text-slate-700 sm:text-lg">
-              Import trades, track real holdings and P&amp;L, monitor drawdown and concentration thresholds, and inspect factual, non-advisory risk explanations in one workspace.
+              Import your trades, track real holdings and profit/loss, get alerted when risk limits are crossed, and read plain-English explanations of every number.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button asChild size="lg" className="w-full sm:w-auto">
@@ -179,22 +181,22 @@ export default function LandingPage() {
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="w-full border-slate-300 bg-white/85 sm:w-auto">
+              <Button asChild variant="outline" size="lg" className="w-full border-slate-300 bg-white/90 sm:w-auto">
                 <Link href="/login">Sign in</Link>
               </Button>
             </div>
             <div className="mt-10 grid grid-cols-1 gap-3 text-xs font-medium text-slate-700 sm:grid-cols-3">
-              <div className="rounded-xl border border-slate-200/90 bg-white/80 px-4 py-3 shadow-sm">
-                <p className="font-semibold text-slate-950">CSV + Manual</p>
-                <p className="mt-0.5 text-slate-500">Validated trade ledger</p>
+              <div className="rounded-xl border border-slate-200/90 bg-white/85 px-4 py-3 shadow-sm">
+                <p className="font-semibold text-slate-950">CSV &amp; Manual</p>
+                <p className="mt-0.5 text-slate-500">Clean trade records</p>
               </div>
-              <div className="rounded-xl border border-slate-200/90 bg-white/80 px-4 py-3 shadow-sm">
+              <div className="rounded-xl border border-slate-200/90 bg-white/85 px-4 py-3 shadow-sm">
                 <p className="font-semibold text-slate-950">Live Alerts</p>
-                <p className="mt-0.5 text-slate-500">Threshold breach feeds</p>
+                <p className="mt-0.5 text-slate-500">Instant breach notices</p>
               </div>
-              <div className="rounded-xl border border-slate-200/90 bg-white/80 px-4 py-3 shadow-sm">
-                <p className="font-semibold text-slate-950">Audit Narrator</p>
-                <p className="mt-0.5 text-slate-500">Gemini + fallback engine</p>
+              <div className="rounded-xl border border-slate-200/90 bg-white/85 px-4 py-3 shadow-sm">
+                <p className="font-semibold text-slate-950">Smart Summaries</p>
+                <p className="mt-0.5 text-slate-500">Plain-English insights</p>
               </div>
             </div>
           </div>
@@ -208,12 +210,12 @@ export default function LandingPage() {
       <section id="capabilities" className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Capabilities</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Features</p>
             <h2 className="mt-2.5 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
               Everything needed for disciplined portfolio review
             </h2>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              RiskLens keeps trade records, deterministic risk analytics, alerting, and factual explanations in one consistent workflow.
+              RiskLens brings your trade history, risk metrics, threshold alerts, and clear metric explanations into one calm workspace.
             </p>
           </div>
           <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
@@ -239,10 +241,10 @@ export default function LandingPage() {
       <section id="workflow" className="border-y border-slate-200 bg-white px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Workflow</p>
-            <h2 className="mt-2.5 text-3xl font-semibold tracking-tight text-slate-950">From raw trades to audit-ready clarity</h2>
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">How it works</p>
+            <h2 className="mt-2.5 text-3xl font-semibold tracking-tight text-slate-950">From raw trades to complete clarity</h2>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              Built around a practical recordkeeping loop: ingest trades, compute risk posture, monitor breaches, and export factual summaries.
+              Built around a simple review habit: organize your trades, understand your exposure, watch key thresholds, and save clean reports.
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -261,8 +263,8 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Platform</p>
-              <h2 className="mt-2.5 text-3xl font-semibold tracking-tight text-slate-950">Engineered for reliability and compliance</h2>
+              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Trust &amp; reliability</p>
+              <h2 className="mt-2.5 text-3xl font-semibold tracking-tight text-slate-950">Built for everyday clarity and peace of mind</h2>
             </div>
             <Button asChild variant="outline" className="w-full bg-white sm:w-auto">
               <Link href="/register">
@@ -273,11 +275,11 @@ export default function LandingPage() {
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             {platform.map(([title, description], index) => {
-              const icons = [DatabaseZap, UploadCloud, LockKeyhole, LineChart];
-              const Icon = icons[index] ?? DatabaseZap;
+              const icons = [ShieldCheck, UploadCloud, Zap, LockKeyhole];
+              const Icon = icons[index] ?? ShieldCheck;
               return (
                 <div key={title} className="flex gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>
@@ -291,32 +293,62 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="border-t border-slate-200 bg-white px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-700 text-white">
-                <Activity className="h-4 w-4" />
-              </span>
-              RiskLens
+      <footer className="border-t border-slate-200 bg-white">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="grid gap-8 md:grid-cols-[1.4fr_1fr_1fr]">
+            <div className="space-y-3">
+              <Link href="/" className="inline-flex items-center gap-2.5 text-sm font-semibold text-slate-950">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700 text-white shadow-sm">
+                  <Activity className="h-4 w-4" />
+                </span>
+                <span className="text-base tracking-tight">RiskLens</span>
+              </Link>
+              <p className="max-w-sm text-xs leading-5 text-slate-600">
+                A calm portfolio tracking and risk-visibility workspace for reviewing holdings, monitoring alert limits, and exporting factual summaries.
+              </p>
             </div>
-            <p className="text-xs text-slate-500">
-              Informational portfolio recordkeeping and risk visibility only. Not financial, investment, or legal advice.
-            </p>
+
+            <div className="space-y-2.5 text-xs">
+              <p className="font-semibold uppercase tracking-wider text-slate-900">Product</p>
+              <ul className="space-y-2 text-slate-600">
+                <li>
+                  <a href="#capabilities" className="transition-colors hover:text-slate-950">
+                    Features
+                  </a>
+                </li>
+                <li>
+                  <a href="#workflow" className="transition-colors hover:text-slate-950">
+                    How it works
+                  </a>
+                </li>
+                <li>
+                  <a href="#platform" className="transition-colors hover:text-slate-950">
+                    Trust &amp; reliability
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div className="space-y-2.5 text-xs">
+              <p className="font-semibold uppercase tracking-wider text-slate-900">Workspace</p>
+              <ul className="space-y-2 text-slate-600">
+                <li>
+                  <Link href="/login" className="transition-colors hover:text-slate-950">
+                    Sign in
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/register" className="font-medium text-emerald-700 transition-colors hover:text-emerald-800 hover:underline">
+                    Create free account
+                  </Link>
+                </li>
+              </ul>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-5 text-xs font-medium text-slate-600">
-            <a href="#capabilities" className="hover:text-slate-950">
-              Capabilities
-            </a>
-            <a href="#workflow" className="hover:text-slate-950">
-              Workflow
-            </a>
-            <Link href="/login" className="hover:text-slate-950">
-              Sign in
-            </Link>
-            <Link href="/register" className="text-emerald-700 hover:underline">
-              Create account
-            </Link>
+
+          <div className="mt-10 flex flex-col gap-2 border-t border-slate-100 pt-6 text-[11px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+            <p>Informational portfolio recordkeeping and risk visibility only. Not financial, investment, or legal advice.</p>
+            <p>© {new Date().getFullYear()} RiskLens</p>
           </div>
         </div>
       </footer>

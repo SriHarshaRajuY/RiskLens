@@ -150,7 +150,7 @@ export function AlertsPanel({ portfolioId }: { portfolioId: string }) {
           {alertsQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading alerts...</p> : null}
           {alertsQuery.isError ? (
             <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-              Alerts could not be loaded. Retry after confirming the API is available.
+              Alerts could not be loaded. Please check your connection and try again.
             </div>
           ) : null}
           {!alertsQuery.isLoading && !alertsQuery.isError && (alertsQuery.data ?? []).length === 0 ? (

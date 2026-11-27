@@ -28,16 +28,14 @@ type NarrativeTab = "metrics" | "alerts" | "notes";
 function fallbackLabel(reason?: NarrativeFallbackReason): string {
   switch (reason) {
     case "missing_api_key":
-      return "Deterministic Audit Engine";
+      return "Built-in Risk Engine";
     case "quota_exceeded":
-      return "Fallback · Quota Limit";
+      return "Standard Engine · AI Busy";
     case "timeout":
-      return "Fallback · Timeout";
     case "invalid_output":
-      return "Fallback · Guardrail";
     case "provider_error":
     default:
-      return "Fallback · Offline";
+      return "Standard Engine";
   }
 }
 
@@ -107,11 +105,7 @@ export function RiskNarrativeCard({
   async function handleRefresh(): Promise<void> {
     try {
       const updated = await refresh();
-      toast.success(
-        updated.source === "gemini"
-          ? "Risk narrative regenerated with Gemini"
-          : "Risk narrative regenerated using deterministic engine"
-      );
+      toast.success(updated.source === "gemini" ? "Risk summary refreshed with AI" : "Risk summary refreshed");
     } catch (err) {
       toast.error(getApiErrorMessage(err, "Could not regenerate risk narrative"));
     }
@@ -193,22 +187,17 @@ export function RiskNarrativeCard({
               ) : (
                 <Cpu className="h-5 w-5 text-muted-foreground" />
               )}
-              Descriptive Risk &amp; Alert Narrator
+              Risk &amp; Alert Summary
             </CardTitle>
             {isGemini ? (
               <Badge variant="secondary" className="border-primary/30 bg-primary/10 text-primary">
-                Gemini AI{data.model ? ` · ${data.model}` : ""}
+                AI Enhanced
               </Badge>
             ) : (
-              <Badge variant="warning">
+              <Badge variant="secondary">
                 {fallbackLabel(data.fallbackReason)}
               </Badge>
             )}
-            {data.cached ? (
-              <Badge variant="secondary" className="text-xs text-muted-foreground">
-                Cached
-              </Badge>
-            ) : null}
           </div>
           <CardDescription>
             Factual, backward-looking explanation of computed risk figures and alert thresholds.
