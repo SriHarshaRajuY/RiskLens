@@ -45,7 +45,7 @@ services:
       - key: GEMINI_MODEL
         value: gemini-2.5-flash
       - key: GEMINI_TIMEOUT_MS
-        value: 8000
+        value: 15000
       - key: GEMINI_CACHE_TTL_SECONDS
         value: 300
 

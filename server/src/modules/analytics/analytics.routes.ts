@@ -12,7 +12,16 @@ const riskNarrativeQuerySchema = z.object({
 });
 
 const portfolioQaBodySchema = z.object({
-  question: z.string().trim().min(3, "Please enter a longer question").max(500, "Question must be 500 characters or fewer")
+  question: z.string().trim().min(2, "Please enter a question").max(500, "Question must be 500 characters or fewer"),
+  history: z
+    .array(
+      z.object({
+        question: z.string().trim().min(1).max(500),
+        answer: z.string().trim().min(1).max(1600)
+      })
+    )
+    .max(6)
+    .optional()
 });
 
 export const analyticsRoutes = Router();

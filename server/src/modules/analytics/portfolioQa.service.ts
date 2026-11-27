@@ -92,11 +92,50 @@ export type AnonymizedQaContext = {
   }>;
 };
 
+export type QaHistoryTurn = {
+  question: string;
+  answer: string;
+};
+
 const geminiQaSchema = z.object({
-  answer: z.string().min(15).max(1500),
-  supportingFacts: z.array(z.string().min(5).max(320)).min(1).max(6),
+  answer: z.string().min(10).max(1600),
+  supportingFacts: z.array(z.string().min(4).max(320)).max(5),
   metricsReferenced: z.array(z.string().min(2).max(60)).max(8)
 });
+
+const METRIC_LABEL_MAP: Record<string, string> = {
+  riskScore: "Risk Score",
+  riskLevel: "Risk Tier",
+  annualizedVolatilityPct: "Annualized Volatility",
+  annualizedVolatility: "Annualized Volatility",
+  sharpeRatio: "Sharpe Ratio",
+  maxDrawdownPct: "Max Drawdown",
+  maxDrawdown: "Max Drawdown",
+  valueAtRisk95Pct: "Value at Risk (95%)",
+  valueAtRisk95: "Value at Risk (95%)",
+  concentrationRiskPct: "Concentration Risk",
+  concentrationRisk: "Concentration Risk",
+  totalPortfolioValue: "Portfolio Value",
+  totalInvestedAmount: "Invested Capital",
+  realizedPnl: "Realized P&L",
+  unrealizedPnl: "Unrealized P&L",
+  totalPnl: "Total P&L",
+  dailyPnl: "Daily P&L",
+  dailyReturnPct: "Daily Return",
+  holdingsCount: "Holdings Count",
+  tradeCount: "Trade Count"
+};
+
+function humanizeMetricLabel(raw: string): string {
+  const mapped = METRIC_LABEL_MAP[raw];
+  if (mapped) return mapped;
+  if (!/[a-z][A-Z]|_/.test(raw)) return raw;
+  return raw
+    .replace(/Pct$/, "")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
 
 const PROHIBITED_QUESTION_PATTERNS = [
   /\b(should i|ought i|can i|would you) (buy|sell|hold|trim|add|rebalance|invest|exit|short|hedge|dump|keep)\b/i,
@@ -166,6 +205,65 @@ export function answerPortfolioQuestionDeterministically(
   const q = question.toLowerCase();
   const currency = context.baseCurrency;
   const { summary, risk, holdings, recentSnapshots, recentTrades, alerts } = context;
+
+  if (/^(hi|hello|hey|good morning|good afternoon|good evening|help|what can you do|what can i ask)\b[!.? ]*$/i.test(q)) {
+    return {
+      answer:
+        "Hello! I can help explain your portfolio's numbers, risk concepts, drawdown history, holdings concentration, P&L breakdown, and alert rules in plain English. Ask me anything factual about your portfolio or how a risk metric works.",
+      supportingFacts: [
+        `Current snapshot: ${plural(summary.holdingsCount, "open holding")} worth ${formatMoney(summary.totalPortfolioValue, currency)} with a Risk Score of ${risk.riskScore}/100 (${risk.riskLevel}).`
+      ],
+      metricsReferenced: ["Portfolio Overview"]
+    };
+  }
+
+  const isDefinitionQuestion = /^(what is|what's|what does|define|explain what|how does|how is)\b/i.test(q) && !/\bmy\b/i.test(q);
+  if (isDefinitionQuestion) {
+    if (/risk score|risk level|risk tier/i.test(q)) {
+      return {
+        answer: `A Risk Score is a 0 to 100 scale that summarizes how bumpy and concentrated a portfolio is (0–30 Low, 31–60 Medium, 61–100 High). RiskLens calculates it using four weighted ingredients: Annualized Volatility (30%), Max Drawdown (30%), Single-Asset Concentration (20%), and Value at Risk 95% (20%). Right now, your portfolio has a Risk Score of ${risk.riskScore}/100 (${risk.riskLevel} tier).`,
+        supportingFacts: [
+          `Your current inputs: ${risk.annualizedVolatilityPct.toFixed(2)}% volatility, ${risk.maxDrawdownPct.toFixed(2)}% max drawdown, ${risk.concentrationRiskPct.toFixed(2)}% top concentration, and ${risk.valueAtRisk95Pct.toFixed(2)}% VaR.`
+        ],
+        metricsReferenced: ["Risk Score", "Annualized Volatility", "Max Drawdown"]
+      };
+    }
+    if (/volatil/i.test(q)) {
+      return {
+        answer: `Volatility measures how sharply a portfolio's daily value swings up and down over time. Annualized Volatility scales those daily swings across a 252-trading-day year—higher numbers mean wider day-to-day price movement. Your portfolio's current Annualized Volatility is ${risk.annualizedVolatilityPct.toFixed(2)}%.`,
+        supportingFacts: [],
+        metricsReferenced: ["Annualized Volatility"]
+      };
+    }
+    if (/drawdown/i.test(q)) {
+      return {
+        answer: `Maximum Drawdown is the largest percentage drop from a portfolio's historical peak value to a later low point before reaching a new high. It shows the worst historical dip you would have experienced in the recorded window. Your portfolio's recorded Max Drawdown is ${risk.maxDrawdownPct.toFixed(2)}%.`,
+        supportingFacts: [],
+        metricsReferenced: ["Max Drawdown"]
+      };
+    }
+    if (/sharpe/i.test(q)) {
+      return {
+        answer: `The Sharpe Ratio measures how much historical return a portfolio earned for each unit of daily volatility taken. Above 1.0 generally reflects stronger return relative to volatility, while negative values reflect net losses relative to swings. Your portfolio's current Sharpe Ratio is ${risk.sharpeRatio.toFixed(2)}.`,
+        supportingFacts: [],
+        metricsReferenced: ["Sharpe Ratio"]
+      };
+    }
+    if (/var\b|value at risk/i.test(q)) {
+      return {
+        answer: `Value at Risk (95%) estimates the typical worst single-day loss seen on the weakest 5% of observed trading days. For example, a 3.00% VaR means roughly 1 in 20 days historically dropped by 3.00% or more. Your portfolio's current 95% daily VaR is ${risk.valueAtRisk95Pct.toFixed(2)}%.`,
+        supportingFacts: [],
+        metricsReferenced: ["Value at Risk (95%)"]
+      };
+    }
+    if (/concentrat/i.test(q)) {
+      return {
+        answer: `Concentration Risk shows what percentage of your total portfolio value sits in your single largest holding. Higher concentration means one stock has a bigger impact on your overall gains or losses. Your portfolio's current Concentration Risk is ${risk.concentrationRiskPct.toFixed(2)}%.`,
+        supportingFacts: [],
+        metricsReferenced: ["Concentration Risk"]
+      };
+    }
+  }
 
   const mentionedHolding = holdings.find((h) => new RegExp(`\\b${h.symbol.toLowerCase()}\\b`, "i").test(question));
   if (mentionedHolding) {
@@ -377,15 +475,21 @@ export function answerPortfolioQuestionDeterministically(
   };
 }
 
-const GEMINI_QA_SYSTEM_INSTRUCTION = `You are a strictly factual portfolio recordkeeping assistant for RiskLens.
-You answer user questions ONLY using the anonymized historical portfolio JSON provided in the prompt.
+const GEMINI_QA_SYSTEM_INSTRUCTION = `You are a friendly, clear, and strictly factual portfolio assistant for RiskLens.
+You help everyday investors understand:
+- Both their own portfolio numbers (using ONLY the anonymized JSON provided) AND
+- General portfolio/risk concepts (e.g., "what is a risk score", "what is Sharpe ratio", "how does drawdown work") in warm, jargon-free English, connecting the concept to their current figure when relevant.
+
+STYLE & FORMATTING RULES:
+1. Write natural, conversational, easy-to-read English (2–4 clear sentences in "answer").
+2. NEVER expose raw JSON field names like "riskScore", "annualizedVolatilityPct", or "maxDrawdownPct" in "answer", "supportingFacts", or "metricsReferenced". Always use human labels like "Risk Score", "Annualized Volatility", "Max Drawdown", "Concentration Risk".
+3. Do NOT repeat the exact same sentence in "supportingFacts"—keep "supportingFacts" to 0–3 genuinely distinct extra details (and leave it empty [] for greetings or pure conceptual definitions).
 
 MANDATORY GLOBAL COMPLIANCE RULES:
 1. NEVER provide investment, financial, trading, tax, or legal advice.
 2. NEVER recommend buying, selling, holding, trimming, adding, or rebalancing any asset.
 3. NEVER predict future prices, returns, or market conditions.
-4. ONLY cite facts, dates, symbols, trades, snapshots, and numbers present in the provided JSON. If the JSON lacks enough history (e.g., < 2 snapshots), state that plainly instead of guessing.
-5. Keep answers concise, accurate, neutral, and easy for a non-technical investor to read.`;
+4. ONLY cite portfolio numbers, dates, trades, snapshots, or holdings that actually appear in the provided JSON. If snapshot history is limited (< 2 snapshots), note that clearly without guessing.`;
 
 const GEMINI_QA_SCHEMA = {
   type: "OBJECT",
@@ -410,6 +514,7 @@ type GeminiQaOutcome =
 async function callGeminiPortfolioQa(
   question: string,
   context: AnonymizedQaContext,
+  history: QaHistoryTurn[] = [],
   requestId?: string
 ): Promise<GeminiQaOutcome> {
   if (!env.GEMINI_API_KEY) {
@@ -422,6 +527,13 @@ async function callGeminiPortfolioQa(
 
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(env.GEMINI_MODEL)}:generateContent`;
   const isGemini25 = /gemini-2\.5/i.test(env.GEMINI_MODEL);
+  const recentHistoryText =
+    history.length > 0
+      ? `\nRecent conversation context:\n${history
+          .slice(-4)
+          .map((turn) => `User: ${sanitizeQuestionInput(turn.question)}\nAssistant: ${sanitizeQuestionInput(turn.answer)}`)
+          .join("\n")}\n`
+      : "";
 
   try {
     const response = await fetch(endpoint, {
@@ -439,13 +551,13 @@ async function callGeminiPortfolioQa(
             role: "user",
             parts: [
               {
-                text: `User question: ${question}\n\nAnonymized portfolio data (currency: ${context.baseCurrency}):\n${JSON.stringify(context)}`
+                text: `${recentHistoryText}Current user question: ${question}\n\nAnonymized portfolio data (currency: ${context.baseCurrency}):\n${JSON.stringify(context)}`
               }
             ]
           }
         ],
         generationConfig: {
-          temperature: 0.1,
+          temperature: 0.2,
           maxOutputTokens: 2048,
           ...(isGemini25 ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
           responseMimeType: "application/json",
@@ -521,7 +633,8 @@ async function callGeminiPortfolioQa(
 export async function generatePortfolioQaResponse(
   question: string,
   context: AnonymizedQaContext,
-  requestId?: string
+  requestId?: string,
+  history: QaHistoryTurn[] = []
 ): Promise<PortfolioQaResponse> {
   const trimmed = sanitizeQuestionInput(question);
   const answeredAt = new Date().toISOString();
@@ -543,14 +656,14 @@ export async function generatePortfolioQaResponse(
     };
   }
 
-  const outcome = await callGeminiPortfolioQa(trimmed, context, requestId);
+  const outcome = await callGeminiPortfolioQa(trimmed, context, history, requestId);
 
   if (outcome.ok) {
     return {
       question: trimmed,
       answer: outcome.data.answer,
       supportingFacts: outcome.data.supportingFacts,
-      metricsReferenced: outcome.data.metricsReferenced,
+      metricsReferenced: Array.from(new Set(outcome.data.metricsReferenced.map(humanizeMetricLabel))),
       refused: false,
       source: "gemini",
       model: env.GEMINI_MODEL,
@@ -568,7 +681,7 @@ export async function generatePortfolioQaResponse(
     question: trimmed,
     answer: fallback.answer,
     supportingFacts: fallback.supportingFacts,
-    metricsReferenced: fallback.metricsReferenced,
+    metricsReferenced: Array.from(new Set(fallback.metricsReferenced.map(humanizeMetricLabel))),
     refused: false,
     source: "deterministic-fallback",
     fallbackReason: outcome.reason,
@@ -588,12 +701,13 @@ export const portfolioQaService = {
     userId: string,
     portfolioId: string,
     question: string,
-    options: { requestId?: string } = {}
+    options: { history?: QaHistoryTurn[]; requestId?: string } = {}
   ): Promise<PortfolioQaResponse> {
     const cleanQuestion = sanitizeQuestionInput(question);
+    const history = options.history ?? [];
     const cacheKey = qaCacheKey(portfolioId, cleanQuestion);
 
-    if (env.GEMINI_API_KEY && !isAdvisoryOrPredictiveQuestion(cleanQuestion)) {
+    if (env.GEMINI_API_KEY && history.length === 0 && !isAdvisoryOrPredictiveQuestion(cleanQuestion)) {
       const cached = await getCache<PortfolioQaResponse>(cacheKey, options.requestId);
       if (cached && cached.source === "gemini") {
         return cached;
@@ -697,9 +811,9 @@ export const portfolioQaService = {
       })
     };
 
-    const result = await generatePortfolioQaResponse(cleanQuestion, context, options.requestId);
+    const result = await generatePortfolioQaResponse(cleanQuestion, context, options.requestId, history);
 
-    if (result.source === "gemini") {
+    if (result.source === "gemini" && history.length === 0) {
       await setCache(cacheKey, result, { ttlSeconds: env.GEMINI_CACHE_TTL_SECONDS });
     }
 
@@ -709,8 +823,10 @@ export const portfolioQaService = {
         portfolioId,
         type: "PORTFOLIO_QA_ASKED",
         message: result.refused
-          ? "Portfolio Q&A blocked non-factual advisory request"
-          : `Answered portfolio question (${result.source})`,
+          ? "Portfolio Q&A declined an advisory request"
+          : result.source === "gemini"
+            ? "Answered portfolio question via Gemini AI"
+            : "Answered portfolio question via built-in assistant",
         metadata: {
           source: result.source,
           refused: result.refused,

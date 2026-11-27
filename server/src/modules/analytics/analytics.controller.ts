@@ -41,8 +41,12 @@ export const analyticsController = {
   },
 
   async portfolioQa(req: Request, res: Response): Promise<Response> {
-    const { question } = req.body as { question: string };
+    const { question, history } = req.body as {
+      question: string;
+      history?: Array<{ question: string; answer: string }>;
+    };
     const data = await portfolioQaService.ask(req.user!.id, requestParam(req, "portfolioId"), question, {
+      history,
       requestId: req.requestId
     });
     return ok(res, data);

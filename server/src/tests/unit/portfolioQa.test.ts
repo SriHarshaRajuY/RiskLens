@@ -213,12 +213,12 @@ describe("portfolioQa service", () => {
     expect(feesResult.answer).toContain("$1.00");
   });
 
-  it("parses markdown-fenced JSON from Gemini and respects 429 cooldown circuit breaker", async () => {
+  it("parses markdown-fenced JSON from Gemini, humanizes metric tags, and respects 429 cooldown circuit breaker", async () => {
     env.GEMINI_API_KEY = "test-key";
     const fenced = "```json\n" + JSON.stringify({
       answer: "AAPL holds 44.00% of total market value.",
       supportingFacts: ["AAPL market value is $14,300.00."],
-      metricsReferenced: ["Concentration Risk"]
+      metricsReferenced: ["riskScore", "annualizedVolatilityPct", "Concentration Risk"]
     }) + "\n```";
 
     globalThis.fetch = vi.fn().mockResolvedValue(
@@ -231,6 +231,7 @@ describe("portfolioQa service", () => {
     const okResult = await generatePortfolioQaResponse("What is AAPL allocation?", sampleContext);
     expect(okResult.source).toBe("gemini");
     expect(okResult.answer).toContain("44.00%");
+    expect(okResult.metricsReferenced).toEqual(["Risk Score", "Annualized Volatility", "Concentration Risk"]);
 
     const fetch429 = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ error: { status: "RESOURCE_EXHAUSTED" } }), { status: 429 })
@@ -246,5 +247,18 @@ describe("portfolioQa service", () => {
     expect(secondDuringCooldown.source).toBe("deterministic-fallback");
     expect(secondDuringCooldown.fallbackReason).toBe("quota_exceeded");
     expect(fetch429).toHaveBeenCalledTimes(1);
+  });
+
+  it("answers general conceptual questions and greetings warmly in deterministic mode", async () => {
+    env.GEMINI_API_KEY = "";
+
+    const defResult = await generatePortfolioQaResponse("what is a risk score", sampleContext);
+    expect(defResult.source).toBe("deterministic-fallback");
+    expect(defResult.answer).toContain("0 to 100 scale");
+    expect(defResult.answer).toContain("58/100");
+
+    const hiResult = await generatePortfolioQaResponse("hi", sampleContext);
+    expect(hiResult.source).toBe("deterministic-fallback");
+    expect(hiResult.answer).toContain("Hello!");
   });
 });

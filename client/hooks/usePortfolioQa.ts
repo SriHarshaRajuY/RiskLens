@@ -17,9 +17,13 @@ export function usePortfolioQa(portfolioId?: string) {
       if (!portfolioId) {
         return Promise.reject(new Error("No portfolio selected"));
       }
+      const recentTurns = history.slice(-4).map((item) => ({
+        question: item.question,
+        answer: item.answer
+      }));
       return apiRequest<PortfolioQaResponse>(`/portfolios/${portfolioId}/qa`, {
         method: "POST",
-        body: jsonBody({ question })
+        body: jsonBody({ question, history: recentTurns })
       });
     },
     onSuccess: (response) => {

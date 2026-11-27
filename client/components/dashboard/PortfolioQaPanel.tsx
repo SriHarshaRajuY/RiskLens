@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   AlertCircle,
   CheckCircle2,
+  Cpu,
   Loader2,
   MessageSquareText,
   Send,
@@ -21,8 +22,8 @@ import { getApiErrorMessage } from "@/lib/api";
 import type { PortfolioQaResponse } from "@/types/analytics";
 
 const SUGGESTED_QUESTIONS = [
+  "What is a risk score?",
   "Why did my drawdown change recently?",
-  "Explain my risk score and volatility",
   "Which holding drives my concentration risk?",
   "Break down my realized vs unrealized P&L",
   "Which risk alerts are currently breached?"
@@ -34,28 +35,51 @@ function sourceBadge(item: PortfolioQaResponse) {
   }
   if (item.source === "gemini") {
     return (
-      <Badge variant="secondary" className="border-primary/30 bg-primary/10 text-primary">
-        AI Assistant
+      <Badge variant="success" className="gap-1">
+        <Sparkles className="h-3 w-3" />
+        Gemini AI{item.model ? ` · ${item.model}` : ""}
       </Badge>
     );
   }
-  return <Badge variant="secondary">Built-in Q&amp;A Engine</Badge>;
+  return (
+    <Badge variant="secondary" className="gap-1">
+      <Cpu className="h-3 w-3" />
+      Built-in Assistant
+    </Badge>
+  );
 }
 
 function fallbackHint(item: PortfolioQaResponse): string | null {
-  if (item.source !== "deterministic-fallback") return null;
-  if (!item.fallbackReason || item.fallbackReason === "missing_api_key") return null;
-  return "AI assistant was unavailable for this request — answered accurately using your built-in portfolio engine.";
+  if (item.source !== "deterministic-fallback" || !item.fallbackReason) return null;
+  switch (item.fallbackReason) {
+    case "missing_api_key":
+      return null;
+    case "quota_exceeded":
+      return "Gemini is temporarily busy (rate limit) — answered using your built-in portfolio assistant.";
+    case "timeout":
+      return "Gemini took too long to respond — answered using your built-in portfolio assistant.";
+    case "invalid_output":
+    case "provider_error":
+    default:
+      return "Gemini was temporarily unavailable — answered using your built-in portfolio assistant.";
+  }
 }
 
 export function PortfolioQaPanel({ portfolioId }: { portfolioId: string }) {
   const [question, setQuestion] = useState("");
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
+  const threadRef = useRef<HTMLDivElement | null>(null);
   const { history, askQuestion, clearHistory, isAsking } = usePortfolioQa(portfolioId);
+
+  useEffect(() => {
+    if (threadRef.current) {
+      threadRef.current.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
+    }
+  }, [history.length, pendingQuestion]);
 
   async function submitQuestion(rawText: string): Promise<void> {
     const trimmed = rawText.trim();
-    if (trimmed.length < 3 || isAsking) return;
+    if (trimmed.length < 2 || isAsking) return;
     setPendingQuestion(trimmed);
     setQuestion("");
     try {
@@ -88,7 +112,7 @@ export function PortfolioQaPanel({ portfolioId }: { portfolioId: string }) {
             </Badge>
           </div>
           <CardDescription>
-            Ask free-form questions about your recorded trades, drawdown movements, concentration, P&amp;L, or alert status.
+            Ask general risk questions or anything about your recorded trades, drawdown history, holdings, P&amp;L, or alerts.
           </CardDescription>
         </div>
         {history.length > 0 ? (
@@ -118,7 +142,7 @@ export function PortfolioQaPanel({ portfolioId }: { portfolioId: string }) {
         </div>
 
         {history.length > 0 || pendingQuestion ? (
-          <div className="max-h-[440px] space-y-4 overflow-y-auto pr-1">
+          <div ref={threadRef} className="max-h-[440px] space-y-4 overflow-y-auto pr-1">
             {history.map((item, idx) => (
               <div key={`${item.answeredAt}-${idx}`} className="space-y-2.5 animate-in fade-in duration-150">
                 <div className="flex justify-end">
@@ -197,8 +221,8 @@ export function PortfolioQaPanel({ portfolioId }: { portfolioId: string }) {
         ) : (
           <div className="rounded-xl border border-dashed bg-muted/15 p-4 text-xs leading-relaxed text-muted-foreground">
             Try clicking one of the suggested questions above or ask your own—for example,{" "}
-            <span className="font-medium text-foreground">&ldquo;Why did my drawdown jump last week?&rdquo;</span> or{" "}
-            <span className="font-medium text-foreground">&ldquo;How much P&amp;L came from my top holding?&rdquo;</span>
+            <span className="font-medium text-foreground">&ldquo;What is a risk score?&rdquo;</span> or{" "}
+            <span className="font-medium text-foreground">&ldquo;Why did my drawdown jump last week?&rdquo;</span>
           </div>
         )}
 
@@ -207,7 +231,7 @@ export function PortfolioQaPanel({ portfolioId }: { portfolioId: string }) {
             <Input
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              placeholder="Ask a factual question about your portfolio history..."
+              placeholder="Ask a question about a metric or your portfolio history..."
               maxLength={500}
               disabled={isAsking}
               aria-label="Portfolio question"
@@ -218,7 +242,7 @@ export function PortfolioQaPanel({ portfolioId }: { portfolioId: string }) {
               </span>
             ) : null}
           </div>
-          <Button type="submit" disabled={isAsking || question.trim().length < 3} className="w-full sm:w-auto">
+          <Button type="submit" disabled={isAsking || question.trim().length < 2} className="w-full sm:w-auto">
             {isAsking ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
