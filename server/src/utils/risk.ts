@@ -22,6 +22,50 @@ export function calculateDailyReturns(values: number[]): number[] {
   return returns;
 }
 
+export type SnapshotFlowPoint = {
+  totalValue: number;
+  unrealizedPnl?: number;
+};
+
+/**
+ * Computes time-weighted / cash-flow-adjusted daily returns across portfolio snapshots.
+ * Because `openCostBasis = totalValue - unrealizedPnl`, any change in `openCostBasis`
+ * represents external capital inflows/outflows (buys or sells) rather than market gain/loss,
+ * preventing deposits or withdrawals from masquerading as huge daily volatility or drawdowns.
+ */
+export function calculateCashFlowAdjustedReturns(snapshots: SnapshotFlowPoint[]): number[] {
+  const returns: number[] = [];
+  for (let index = 1; index < snapshots.length; index += 1) {
+    const prev = snapshots[index - 1]!;
+    const curr = snapshots[index]!;
+
+    const prevCostBasis = prev.totalValue - (prev.unrealizedPnl ?? 0);
+    const currCostBasis = curr.totalValue - (curr.unrealizedPnl ?? 0);
+    const netCapitalFlow = currCostBasis - prevCostBasis;
+    const denominator = prev.totalValue + Math.max(netCapitalFlow, 0);
+
+    if (denominator <= 0) {
+      returns.push(0);
+      continue;
+    }
+
+    const marketChange = curr.totalValue - prev.totalValue - netCapitalFlow;
+    const rawReturn = marketChange / denominator;
+    returns.push(clamp(rawReturn, -0.95, 2));
+  }
+  return returns;
+}
+
+export function buildWealthIndexFromReturns(returns: number[], startValue = 100): number[] {
+  const indexValues = [startValue];
+  let current = startValue;
+  for (const r of returns) {
+    current = Math.max(current * (1 + r), 0.01);
+    indexValues.push(current);
+  }
+  return indexValues;
+}
+
 export function calculateRiskMetrics(values: number[], allocationPercents: number[], riskFreeRate = 0): RiskMetrics {
   const dailyReturns = calculateDailyReturns(values);
   const dailyVolatility = standardDeviation(dailyReturns);

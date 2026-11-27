@@ -148,14 +148,25 @@ const PROHIBITED_QUESTION_PATTERNS = [
   /\b(ignore (all )?(previous|above|prior) instructions|system prompt|reveal your prompt|jailbreak|bypass)\b/i
 ];
 
+/**
+ * Patterns that indicate a Gemini response contains genuine financial advice
+ * (direct imperative recommendations to the user). These are NARROW on purpose —
+ * factual explanations that happen to use words like "consider" or "rebalance"
+ * in a historical/educational context must NOT trigger the guardrail.
+ *
+ * Rule: only fire when the model explicitly tells the user what to do with money.
+ */
 const ADVISORY_RESPONSE_PATTERNS = [
-  /\byou should\b/i,
-  /\bi recommend\b/i,
-  /\bwe recommend\b/i,
-  /\bconsider (buying|selling|rebalancing|reducing|increasing|exiting|entering)\b/i,
-  /\b(buy|sell|rebalance|short|hedge) (more|some|all|your|shares|positions)\b/i,
-  /\bwill (outperform|rise|fall|crash|rally|gain)\b/i,
-  /\bguaranteed\b/i
+  // Direct second-person imperatives telling the user to trade
+  /\byou should (buy|sell|short|exit|enter|trim|add|reduce|rebalance|liquidate|invest|divest)\b/i,
+  // Explicit "I / we recommend" followed by an action
+  /\b(i|we) recommend (buying|selling|shorting|exiting|trimming|adding|reducing|rebalancing|liquidating)\b/i,
+  // "Buy / sell now / today / immediately" — time-urgent trade calls
+  /\b(buy|sell|exit|short)\b.{0,30}\b(now|immediately|today|right now|at once|urgently)\b/i,
+  // Guaranteed return / profit claims
+  /\bguaranteed (return|profit|gain|income|yield)\b/i,
+  // Definitive price-movement predictions
+  /\bwill (definitely|certainly|surely|inevitably) (outperform|rise|fall|crash|rally|gain|drop|decline)\b/i
 ];
 
 function sanitizeQuestionInput(raw: string): string {
@@ -487,9 +498,10 @@ STYLE & FORMATTING RULES:
 
 MANDATORY GLOBAL COMPLIANCE RULES:
 1. NEVER provide investment, financial, trading, tax, or legal advice.
-2. NEVER recommend buying, selling, holding, trimming, adding, or rebalancing any asset.
-3. NEVER predict future prices, returns, or market conditions.
-4. ONLY cite portfolio numbers, dates, trades, snapshots, or holdings that actually appear in the provided JSON. If snapshot history is limited (< 2 snapshots), note that clearly without guessing.`;
+2. NEVER recommend buying, selling, holding, trimming, adding, or rebalancing any asset. Do NOT use phrases like "you should buy", "you should sell", "I recommend buying/selling", or "we recommend". Do NOT suggest trade actions even when explaining a metric.
+3. NEVER predict future prices, returns, or market conditions. Do NOT say a stock or portfolio "will rise", "will fall", "will outperform", etc.
+4. ONLY cite portfolio numbers, dates, trades, snapshots, or holdings that actually appear in the provided JSON. If snapshot history is limited (< 2 snapshots), note that clearly without guessing.
+5. LANGUAGE CONSTRAINT: Use factual, educational, past-tense, or present-state descriptions only. It is acceptable to say "historically", "as of your last snapshot", or "based on recorded trades" — but never phrase anything as an action recommendation to the user.`;
 
 const GEMINI_QA_SCHEMA = {
   type: "OBJECT",

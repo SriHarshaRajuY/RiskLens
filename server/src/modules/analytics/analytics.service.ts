@@ -2,7 +2,11 @@ import { PortfolioSnapshot } from "../snapshots/portfolioSnapshot.model.js";
 import { Trade } from "../trades/trade.model.js";
 import { portfolioService } from "../portfolio/portfolio.service.js";
 import { portfolioCacheKey, withCache } from "../../utils/cache.js";
-import { calculateDailyReturns, calculateRiskMetrics } from "../../utils/risk.js";
+import {
+  buildWealthIndexFromReturns,
+  calculateCashFlowAdjustedReturns,
+  calculateRiskMetrics
+} from "../../utils/risk.js";
 import { round } from "../../utils/math.js";
 import { toObjectId } from "../../utils/objectId.js";
 import { buildHoldings, ledgerStats, type TradeLedgerEntry } from "./holdings.service.js";
@@ -67,7 +71,12 @@ export const analyticsService = {
           .lean();
         const latest = snapshots[0];
         const previous = snapshots[1];
-        const dailyPnl = latest && previous ? latest.totalValue - previous.totalValue : 0;
+        const [adjustedLatestReturn] =
+          latest && previous ? calculateCashFlowAdjustedReturns([previous, latest]) : [latest?.dailyReturn ?? 0];
+        const dailyPnl =
+          latest && previous
+            ? (latest.realizedPnl + latest.unrealizedPnl) - (previous.realizedPnl + previous.unrealizedPnl)
+            : 0;
         const best = [...holdings].sort((a, b) => b.totalPnl - a.totalPnl)[0] ?? null;
         const worst = [...holdings].sort((a, b) => a.totalPnl - b.totalPnl)[0] ?? null;
 
@@ -80,7 +89,7 @@ export const analyticsService = {
           unrealizedPnl: round(unrealizedPnl, 2),
           totalPnl: round(totalPnl, 2),
           dailyPnl: round(dailyPnl, 2),
-          dailyReturn: latest?.dailyReturn ?? 0,
+          dailyReturn: round(adjustedLatestReturn ?? 0, 6),
           holdingsCount: holdings.length,
           tradeCount: trades.length,
           bestPerformer: best
@@ -116,8 +125,7 @@ export const analyticsService = {
         const snapshots = await PortfolioSnapshot.find({ userId: toObjectId(userId, "userId"), portfolioId: toObjectId(portfolioId, "portfolioId") })
           .sort({ date: 1 })
           .lean();
-        const values = snapshots.map((snapshot) => snapshot.totalValue);
-        const returns = calculateDailyReturns(values);
+        const returns = calculateCashFlowAdjustedReturns(snapshots);
 
         return snapshots.map((snapshot, index) => ({
           date: snapshot.date.toISOString().slice(0, 10),
@@ -141,9 +149,8 @@ export const analyticsService = {
           this.holdings(userId, portfolioId, requestId)
         ]);
 
-        const values = snapshots.map((snapshot) => snapshot.totalValue);
-        const fallbackValue = holdings.reduce((total, holding) => total + holding.marketValue, 0);
-        const portfolioValues = values.length >= 2 ? values : [fallbackValue, fallbackValue];
+        const adjustedReturns = snapshots.length >= 2 ? calculateCashFlowAdjustedReturns(snapshots) : [];
+        const portfolioValues = adjustedReturns.length >= 1 ? buildWealthIndexFromReturns(adjustedReturns) : [100, 100];
         const metrics = calculateRiskMetrics(
           portfolioValues,
           holdings.map((holding) => holding.allocationPercent)
@@ -151,7 +158,7 @@ export const analyticsService = {
 
         return {
           ...metrics,
-          insufficientHistory: values.length < 2
+          insufficientHistory: snapshots.length < 2
         };
       },
       { portfolioId, metricType: "RISK", requestId }

@@ -4,6 +4,7 @@ import { PortfolioSnapshot } from "./portfolioSnapshot.model.js";
 import { startOfUtcDay } from "../../utils/date.js";
 import { round } from "../../utils/math.js";
 import { toObjectId } from "../../utils/objectId.js";
+import { calculateCashFlowAdjustedReturns } from "../../utils/risk.js";
 
 export const snapshotService = {
   async generateForPortfolio(input: { userId: string; portfolioId: string; requestId?: string }) {
@@ -18,10 +19,12 @@ export const snapshotService = {
       .lean();
     const previous = previousSnapshots.find((snapshot) => snapshot.date < today);
 
-    const dailyReturn =
-      previous && previous.totalValue > 0
-        ? (summary.totalPortfolioValue - previous.totalValue) / previous.totalValue
-        : 0;
+    const [dailyReturn = 0] = previous
+      ? calculateCashFlowAdjustedReturns([
+          previous,
+          { totalValue: summary.totalPortfolioValue, unrealizedPnl: summary.unrealizedPnl }
+        ])
+      : [0];
 
     const snapshot = await PortfolioSnapshot.findOneAndUpdate(
       {
