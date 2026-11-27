@@ -46,5 +46,18 @@ export const notificationService = {
     if (!notification) throw notFound("Notification");
     emitToUser(userId, "notification.read", { notificationId });
     return notification;
+  },
+
+  async markAllRead(userId: string, portfolioId?: string) {
+    const query: Record<string, unknown> = {
+      userId: toObjectId(userId, "userId"),
+      isRead: false
+    };
+    if (portfolioId) {
+      query.portfolioId = toObjectId(portfolioId, "portfolioId");
+    }
+    const result = await Notification.updateMany(query, { isRead: true });
+    emitToUser(userId, "notification.readAll", { portfolioId: portfolioId ?? null });
+    return { updated: result.modifiedCount };
   }
 };

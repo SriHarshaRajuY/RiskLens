@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, FileText, Loader2, Upload, XCircle } from "lucide-react";
+import { CheckCircle2, Download, FileText, Loader2, Upload, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -124,25 +124,52 @@ export function TradeUploadBox({ portfolioId }: { portfolioId: string }) {
           <FileText className="h-4 w-4" />
           <span className="truncate">{selectedFileName || "No CSV selected"}</span>
         </div>
-        <Button
-          className="w-full sm:w-auto"
-          onClick={() => {
-            const file = inputRef.current?.files?.[0];
-            if (!file) {
-              toast.error("Select a CSV file first");
-              return;
-            }
-            if (!file.name.toLowerCase().endsWith(".csv")) {
-              toast.error("Select a .csv file with the required trade columns");
-              return;
-            }
-            mutation.mutate(file);
-          }}
-          disabled={mutation.isPending}
-        >
-          <Upload className="h-4 w-4" />
-          {mutation.isPending ? "Uploading..." : "Upload trades"}
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Button
+            className="w-full sm:w-auto"
+            onClick={() => {
+              const file = inputRef.current?.files?.[0];
+              if (!file) {
+                toast.error("Select a CSV file first");
+                return;
+              }
+              if (!file.name.toLowerCase().endsWith(".csv")) {
+                toast.error("Select a .csv file with the required trade columns");
+                return;
+              }
+              mutation.mutate(file);
+            }}
+            disabled={mutation.isPending}
+          >
+            <Upload className="h-4 w-4" />
+            {mutation.isPending ? "Uploading..." : "Upload trades"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full sm:w-auto"
+            onClick={() => {
+              const sampleCsv = [
+                "date,symbol,side,quantity,price,fees",
+                "2026-10-01,AAPL,BUY,10,225.50,1.00",
+                "2026-10-12,MSFT,BUY,5,418.00,1.00",
+                "2026-10-20,AAPL,SELL,2,232.00,1.00"
+              ].join("\n");
+              const blob = new Blob([sampleCsv], { type: "text/csv;charset=utf-8" });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = "sample-trades.csv";
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            <Download className="h-4 w-4" />
+            Sample CSV
+          </Button>
+        </div>
 
         {displayStatus ? (
           <div className="rounded-md border p-3">

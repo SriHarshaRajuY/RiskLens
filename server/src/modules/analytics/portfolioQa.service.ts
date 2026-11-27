@@ -133,6 +133,10 @@ function formatMoney(value: number, currency: "USD" | "INR" = "USD"): string {
   return value < 0 ? `-${symbol}${abs}` : `${symbol}${abs}`;
 }
 
+function plural(count: number, word: string): string {
+  return `${count} ${count === 1 ? word : `${word}s`}`;
+}
+
 export function answerPortfolioQuestionDeterministically(
   question: string,
   context: AnonymizedQaContext
@@ -143,18 +147,22 @@ export function answerPortfolioQuestionDeterministically(
 
   const mentionedHolding = holdings.find((h) => new RegExp(`\\b${h.symbol.toLowerCase()}\\b`, "i").test(question));
   if (mentionedHolding) {
+    const symbolTrades = recentTrades.filter((t) => t.symbol.toUpperCase() === mentionedHolding.symbol.toUpperCase());
     return {
       answer: `${mentionedHolding.symbol} currently represents ${mentionedHolding.allocationPercent.toFixed(2)}% of your portfolio (${formatMoney(mentionedHolding.marketValue, currency)} across ${mentionedHolding.quantity} units at ${formatMoney(mentionedHolding.currentPrice, currency)} per unit). Its historical total P&L is ${formatMoney(mentionedHolding.totalPnl, currency)} (${formatMoney(mentionedHolding.realizedPnl, currency)} realized, ${formatMoney(mentionedHolding.unrealizedPnl, currency)} unrealized).`,
       supportingFacts: [
         `Open quantity: ${mentionedHolding.quantity} at average buy price ${formatMoney(mentionedHolding.averageBuyPrice, currency)}.`,
         `Portfolio weight: ${mentionedHolding.allocationPercent.toFixed(2)}% of ${formatMoney(summary.totalPortfolioValue, currency)} total market value.`,
-        `Total P&L for ${mentionedHolding.symbol}: ${formatMoney(mentionedHolding.totalPnl, currency)}.`
+        `Total P&L for ${mentionedHolding.symbol}: ${formatMoney(mentionedHolding.totalPnl, currency)}.`,
+        ...(symbolTrades.length > 0
+          ? [`Most recent ${mentionedHolding.symbol} trade: ${symbolTrades[0]!.side} ${symbolTrades[0]!.quantity} @ ${formatMoney(symbolTrades[0]!.price, currency)} on ${symbolTrades[0]!.date}.`]
+          : [])
       ],
       metricsReferenced: ["Holdings Allocation", "Realized P&L", "Unrealized P&L"]
     };
   }
 
-  if (/drawdown|drop|decline|peak|trough|last week|history|snapshot/i.test(q)) {
+  if (/drawdown|drop|decline|peak|trough|pullback/i.test(q)) {
     const worstSnapshot = [...recentSnapshots].sort((a, b) => b.drawdownFromPeakPct - a.drawdownFromPeakPct)[0];
     const worstDay = [...recentSnapshots].sort((a, b) => a.dailyReturnPct - b.dailyReturnPct)[0];
     const worstHolding = summary.worstPerformer;
@@ -164,14 +172,14 @@ export function answerPortfolioQuestionDeterministically(
         answer: `Historical maximum drawdown is currently pending because fewer than 2 daily valuation snapshots are recorded (${recentSnapshots.length} available). Once daily snapshots accumulate across multiple days, RiskLens tracks peak-to-trough declines automatically.`,
         supportingFacts: [
           `Recorded daily snapshots: ${recentSnapshots.length}.`,
-          `Recorded trades: ${summary.tradeCount} across ${summary.holdingsCount} open holding(s).`
+          `Recorded trades: ${plural(summary.tradeCount, "trade")} across ${plural(summary.holdingsCount, "open holding")}.`
         ],
         metricsReferenced: ["Max Drawdown", "Daily Snapshots"]
       };
     }
 
     const facts = [
-      `Portfolio maximum drawdown is ${risk.maxDrawdownPct.toFixed(2)}% across ${recentSnapshots.length} recent daily snapshots.`,
+      `Portfolio maximum drawdown is ${risk.maxDrawdownPct.toFixed(2)}% across ${plural(recentSnapshots.length, "recent daily snapshot")}.`,
       worstSnapshot
         ? `Deepest recent drawdown from peak (${worstSnapshot.drawdownFromPeakPct.toFixed(2)}%) was recorded on ${worstSnapshot.date} at value ${formatMoney(worstSnapshot.totalValue, currency)}.`
         : "No peak-to-trough snapshot contraction recorded.",
@@ -190,20 +198,92 @@ export function answerPortfolioQuestionDeterministically(
     };
   }
 
-  if (/concentrat|weight|allocat|largest|biggest|exposure|diversif/i.test(q)) {
+  if (/volatil|sharpe|var\b|value at risk|risk score|risk level|swing/i.test(q)) {
+    const volPts = Math.min((risk.annualizedVolatilityPct / 45) * 30, 30);
+    const ddPts = Math.min((risk.maxDrawdownPct / 35) * 30, 30);
+    const concPts = Math.min((risk.concentrationRiskPct / 60) * 20, 20);
+    const varPts = Math.min((risk.valueAtRisk95Pct / 8) * 20, 20);
+    const drivers = [
+      { name: "Volatility (30% weight)", pts: volPts },
+      { name: "Max Drawdown (30% weight)", pts: ddPts },
+      { name: "Concentration (20% weight)", pts: concPts },
+      { name: "Value at Risk 95% (20% weight)", pts: varPts }
+    ].sort((a, b) => b.pts - a.pts);
+
+    const topDriver = drivers[0]!;
+    const swingDays = [...recentSnapshots].sort((a, b) => Math.abs(b.dailyReturnPct) - Math.abs(a.dailyReturnPct));
+    const biggestSwing = swingDays[0];
+
+    return {
+      answer: `Your composite risk score is ${risk.riskScore}/100 (${risk.riskLevel} tier). Annualized volatility is ${risk.annualizedVolatilityPct.toFixed(2)}%, Sharpe ratio is ${risk.sharpeRatio.toFixed(2)}, and 95% daily Value at Risk is ${risk.valueAtRisk95Pct.toFixed(2)}%. The largest contributor to your risk score is ${topDriver.name} (${topDriver.pts.toFixed(1)} pts).`,
+      supportingFacts: [
+        `Score breakdown: Volatility ${volPts.toFixed(1)}/30, Drawdown ${ddPts.toFixed(1)}/30, Concentration ${concPts.toFixed(1)}/20, VaR 95% ${varPts.toFixed(1)}/20.`,
+        ...(biggestSwing
+          ? [`Largest recent daily move: ${biggestSwing.dailyReturnPct.toFixed(2)}% on ${biggestSwing.date}.`]
+          : []),
+        risk.insufficientHistory
+          ? "Return-series metrics remain preliminary until at least 2 daily snapshots exist."
+          : `Computed across ${plural(recentSnapshots.length, "daily snapshot")}.`
+      ],
+      metricsReferenced: ["Risk Score", "Annualized Volatility", "Sharpe Ratio", "Value at Risk (95%)"]
+    };
+  }
+
+  if (/today|yesterday|this week|last week|7 days|recent performance|how did/i.test(q)) {
+    const latest = recentSnapshots.at(-1);
+    const weekAnchor = recentSnapshots.length >= 7 ? recentSnapshots[recentSnapshots.length - 7] : recentSnapshots[0];
+    if (!latest || recentSnapshots.length < 2 || !weekAnchor) {
+      return {
+        answer: `Current portfolio value is ${formatMoney(summary.totalPortfolioValue, currency)} with total P&L of ${formatMoney(summary.totalPnl, currency)}. Multi-day period comparisons will populate once at least 2 daily valuation snapshots are recorded.`,
+        supportingFacts: [
+          `Recorded snapshots: ${recentSnapshots.length}`,
+          `Recorded trades: ${plural(summary.tradeCount, "trade")}`
+        ],
+        metricsReferenced: ["Portfolio Value", "Daily Return"]
+      };
+    }
+
+    const diff = latest.totalValue - weekAnchor.totalValue;
+    const pct = weekAnchor.totalValue > 0 ? (diff / weekAnchor.totalValue) * 100 : 0;
+
+    return {
+      answer: `From ${weekAnchor.date} to ${latest.date}, portfolio value moved from ${formatMoney(weekAnchor.totalValue, currency)} to ${formatMoney(latest.totalValue, currency)} (${diff >= 0 ? "+" : ""}${formatMoney(diff, currency)}, ${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%). The latest daily return was ${summary.dailyReturnPct.toFixed(2)}% (${formatMoney(summary.dailyPnl, currency)}).`,
+      supportingFacts: [
+        `Latest valuation (${latest.date}): ${formatMoney(latest.totalValue, currency)}.`,
+        `Comparison baseline (${weekAnchor.date}): ${formatMoney(weekAnchor.totalValue, currency)}.`,
+        `Latest daily P&L: ${formatMoney(summary.dailyPnl, currency)} (${summary.dailyReturnPct.toFixed(2)}%).`
+      ],
+      metricsReferenced: ["Portfolio Value", "Daily P&L", "Daily Returns"]
+    };
+  }
+
+  if (/fee|fees|cost|invested|capital/i.test(q)) {
+    const totalRecentFees = recentTrades.reduce((sum, t) => sum + (t.fees ?? 0), 0);
+    return {
+      answer: `Total recorded invested capital is ${formatMoney(summary.totalInvestedAmount, currency)} compared to current market value of ${formatMoney(summary.totalPortfolioValue, currency)} (net total P&L of ${formatMoney(summary.totalPnl, currency)}). Across your ${plural(recentTrades.length, "most recent trade")}, recorded fees total ${formatMoney(totalRecentFees, currency)}.`,
+      supportingFacts: [
+        `Total invested amount: ${formatMoney(summary.totalInvestedAmount, currency)}.`,
+        `Current market value: ${formatMoney(summary.totalPortfolioValue, currency)}.`,
+        `Recorded fees across last ${recentTrades.length} trade(s): ${formatMoney(totalRecentFees, currency)}.`
+      ],
+      metricsReferenced: ["Invested Capital", "Portfolio Value", "Trade Fees"]
+    };
+  }
+
+  if (/concentrat|weight|allocat|largest|biggest|exposure|diversif|compare|top|breakdown|holding/i.test(q)) {
     const sorted = [...holdings].sort((a, b) => b.allocationPercent - a.allocationPercent);
     const top = sorted[0];
     if (!top) {
       return {
-        answer: `There are currently no open holdings in this portfolio (${summary.tradeCount} recorded trades), so single-asset concentration is 0.00%.`,
+        answer: `There are currently no open holdings in this portfolio (${plural(summary.tradeCount, "recorded trade")}), so single-asset concentration is 0.00%.`,
         supportingFacts: ["Open holdings: 0", `Cumulative realized P&L: ${formatMoney(summary.realizedPnl, currency)}`],
         metricsReferenced: ["Concentration Risk", "Holdings Count"]
       };
     }
     return {
-      answer: `Single-asset concentration is ${risk.concentrationRiskPct.toFixed(2)}%, driven by ${top.symbol} (${formatMoney(top.marketValue, currency)} out of ${formatMoney(summary.totalPortfolioValue, currency)} total value across ${summary.holdingsCount} open holding${summary.holdingsCount === 1 ? "" : "s"}).`,
-      supportingFacts: sorted.slice(0, 4).map(
-        (h) => `${h.symbol}: ${h.allocationPercent.toFixed(2)}% weight (${formatMoney(h.marketValue, currency)})`
+      answer: `Single-asset concentration is ${risk.concentrationRiskPct.toFixed(2)}%, led by ${top.symbol} (${formatMoney(top.marketValue, currency)} out of ${formatMoney(summary.totalPortfolioValue, currency)} total value across ${plural(summary.holdingsCount, "open holding")}).`,
+      supportingFacts: sorted.slice(0, 5).map(
+        (h) => `${h.symbol}: ${h.allocationPercent.toFixed(2)}% weight (${formatMoney(h.marketValue, currency)}, P&L ${formatMoney(h.totalPnl, currency)})`
       ),
       metricsReferenced: ["Concentration Risk", "Portfolio Allocation"]
     };
@@ -221,8 +301,8 @@ export function answerPortfolioQuestionDeterministically(
     return {
       answer:
         breached.length > 0
-          ? `${breached.length} of ${alerts.length} configured alert(s) currently meet or exceed their threshold: ${breached.map((b) => `${b.alertType.replaceAll("_", " ").toLowerCase()} (${b.currentValuePct.toFixed(2)}% vs ${b.thresholdPct.toFixed(2)}% limit)`).join(", ")}.`
-          : `All ${alerts.length} configured alert(s) are currently within their threshold limits.`,
+          ? `${plural(breached.length, "alert")} out of ${alerts.length} currently meet or exceed their threshold: ${breached.map((b) => `${b.alertType.replaceAll("_", " ").toLowerCase()} (${b.currentValuePct.toFixed(2)}% vs ${b.thresholdPct.toFixed(2)}% limit)`).join(", ")}.`
+          : `All ${plural(alerts.length, "configured alert")} are currently within their threshold limits.`,
       supportingFacts: alerts.map(
         (a) => `${a.alertType.replaceAll("_", " ")}: ${a.status.replaceAll("_", " ")} (${a.currentValuePct.toFixed(2)}% observed vs ${a.thresholdPct.toFixed(2)}% threshold)`
       ),
@@ -256,7 +336,7 @@ export function answerPortfolioQuestionDeterministically(
     }
     const latest = recentTrades[0]!;
     return {
-      answer: `This portfolio has ${summary.tradeCount} recorded trade(s). The most recent entry was ${latest.side} ${latest.quantity} ${latest.symbol} at ${formatMoney(latest.price, currency)} on ${latest.date}.`,
+      answer: `This portfolio has ${plural(summary.tradeCount, "recorded trade")}. The most recent entry was ${latest.side} ${latest.quantity} ${latest.symbol} at ${formatMoney(latest.price, currency)} on ${latest.date}.`,
       supportingFacts: recentTrades
         .slice(0, 4)
         .map((t) => `${t.date}: ${t.side} ${t.quantity} ${t.symbol} @ ${formatMoney(t.price, currency)}`),
@@ -265,7 +345,7 @@ export function answerPortfolioQuestionDeterministically(
   }
 
   return {
-    answer: `Your portfolio currently holds ${summary.holdingsCount} open position(s) valued at ${formatMoney(summary.totalPortfolioValue, currency)} with a composite risk score of ${risk.riskScore}/100 (${risk.riskLevel} tier). Annualized volatility is ${risk.annualizedVolatilityPct.toFixed(2)}%, maximum drawdown is ${risk.maxDrawdownPct.toFixed(2)}%, and top concentration is ${risk.concentrationRiskPct.toFixed(2)}%.`,
+    answer: `Your portfolio currently holds ${plural(summary.holdingsCount, "open position")} valued at ${formatMoney(summary.totalPortfolioValue, currency)} with a composite risk score of ${risk.riskScore}/100 (${risk.riskLevel} tier). Annualized volatility is ${risk.annualizedVolatilityPct.toFixed(2)}%, maximum drawdown is ${risk.maxDrawdownPct.toFixed(2)}%, and top concentration is ${risk.concentrationRiskPct.toFixed(2)}%.`,
     supportingFacts: [
       `Total P&L: ${formatMoney(summary.totalPnl, currency)} (${formatMoney(summary.realizedPnl, currency)} realized, ${formatMoney(summary.unrealizedPnl, currency)} unrealized).`,
       `Risk score: ${risk.riskScore}/100 (${risk.riskLevel}) | Sharpe: ${risk.sharpeRatio.toFixed(2)} | VaR 95%: ${risk.valueAtRisk95Pct.toFixed(2)}%.`,

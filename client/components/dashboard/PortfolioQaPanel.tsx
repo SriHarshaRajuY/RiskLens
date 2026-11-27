@@ -22,6 +22,7 @@ import type { PortfolioQaResponse } from "@/types/analytics";
 
 const SUGGESTED_QUESTIONS = [
   "Why did my drawdown change recently?",
+  "Explain my risk score and volatility",
   "Which holding drives my concentration risk?",
   "Break down my realized vs unrealized P&L",
   "Which risk alerts are currently breached?"
@@ -39,6 +40,12 @@ function sourceBadge(item: PortfolioQaResponse) {
     );
   }
   return <Badge variant="secondary">Built-in Q&amp;A Engine</Badge>;
+}
+
+function fallbackHint(item: PortfolioQaResponse): string | null {
+  if (item.source !== "deterministic-fallback") return null;
+  if (!item.fallbackReason || item.fallbackReason === "missing_api_key") return null;
+  return "AI assistant was unavailable for this request — answered accurately using your built-in portfolio engine.";
 }
 
 export function PortfolioQaPanel({ portfolioId }: { portfolioId: string }) {
@@ -137,6 +144,10 @@ export function PortfolioQaPanel({ portfolioId }: { portfolioId: string }) {
                   </div>
 
                   <p className="mt-2.5 text-sm leading-relaxed text-foreground">{item.answer}</p>
+
+                  {fallbackHint(item) ? (
+                    <p className="mt-2 text-[11px] text-muted-foreground">{fallbackHint(item)}</p>
+                  ) : null}
 
                   {item.supportingFacts.length > 0 ? (
                     <ul className="mt-3 space-y-1.5 border-t pt-2.5 text-xs text-muted-foreground">

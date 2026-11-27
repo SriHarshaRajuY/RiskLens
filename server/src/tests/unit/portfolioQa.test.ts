@@ -189,4 +189,23 @@ describe("portfolioQa service", () => {
     expect(result.disclaimer).toBe(QA_NON_ADVISORY_DISCLAIMER);
     expect(result.supportingFacts).toHaveLength(2);
   });
+
+  it("answers risk score, volatility, weekly performance, and fees questions in deterministic fallback", async () => {
+    env.GEMINI_API_KEY = "";
+
+    const riskResult = await generatePortfolioQaResponse("Explain my risk score and volatility", sampleContext);
+    expect(riskResult.source).toBe("deterministic-fallback");
+    expect(riskResult.answer).toContain("58/100");
+    expect(riskResult.answer).toContain("24.50%");
+
+    const weekResult = await generatePortfolioQaResponse("How did my portfolio perform this week?", sampleContext);
+    expect(weekResult.source).toBe("deterministic-fallback");
+    expect(weekResult.answer).toContain("2025-11-18");
+    expect(weekResult.answer).toContain("2025-11-25");
+
+    const feesResult = await generatePortfolioQaResponse("How much did I invest and pay in fees?", sampleContext);
+    expect(feesResult.source).toBe("deterministic-fallback");
+    expect(feesResult.answer).toContain("$30,000.00");
+    expect(feesResult.answer).toContain("$1.00");
+  });
 });

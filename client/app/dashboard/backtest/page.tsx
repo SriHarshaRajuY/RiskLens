@@ -163,6 +163,47 @@ export default function BacktestPage() {
                   </CardContent>
                 </Card>
               ) : null}
+              {(resultsQuery.data ?? []).length > 1 ? (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Recent backtests</CardTitle>
+                    <CardDescription>Click a previous simulation to inspect its equity curve and metrics.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {(resultsQuery.data ?? []).slice(0, 6).map((item) => {
+                      const selected = active._id === item._id;
+                      return (
+                        <button
+                          key={item._id}
+                          type="button"
+                          onClick={() => setLatest(item)}
+                          className={`flex w-full flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-left text-xs transition-colors ${
+                            selected ? "border-primary bg-primary/5" : "hover:bg-muted/50"
+                          }`}
+                        >
+                          <div className="space-y-0.5">
+                            <p className="font-semibold text-foreground">
+                              {item.symbol} · {item.strategy.replaceAll("_", " ")}
+                            </p>
+                            <p className="text-muted-foreground">
+                              {item.equityCurve.length >= 2
+                                ? `${new Date(item.equityCurve[0]!.date).toISOString().slice(0, 10)} → ${new Date(item.equityCurve[item.equityCurve.length - 1]!.date).toISOString().slice(0, 10)}`
+                                : new Date(item.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="text-right tabular-nums">
+                            <p className={`font-semibold ${item.totalReturn >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+                              {item.totalReturn >= 0 ? "+" : ""}
+                              {item.totalReturn.toFixed(2)}%
+                            </p>
+                            <p className="text-muted-foreground">{formatCurrency(item.finalCapital)}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              ) : null}
             </>
           ) : (
             <Card>

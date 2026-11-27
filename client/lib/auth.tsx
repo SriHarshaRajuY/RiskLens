@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { clearActivePortfolioId } from "@/hooks/useActivePortfolio";
 import { apiRequest, clearCsrfToken, jsonBody, setCsrfToken } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { disconnectSocket } from "@/lib/socket";
@@ -122,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           skipAuthRefresh: true
         }).catch(() => undefined);
         clearCsrfToken();
+        clearActivePortfolioId();
         disconnectSocket();
         queryClient.clear();
         setUser(null);

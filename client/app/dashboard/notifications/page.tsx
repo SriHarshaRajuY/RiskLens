@@ -50,6 +50,22 @@ export default function NotificationsPage() {
       toast.error(getApiErrorMessage(error, "Could not update notification"));
     }
   });
+  const markAllRead = useMutation({
+    mutationFn: () =>
+      apiRequest<{ updated: number }>(
+        isPortfolioScoped ? `/notifications/read-all?portfolioId=${activePortfolioId}` : "/notifications/read-all",
+        { method: "PUT" }
+      ),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      toast.success(result.updated > 0 ? `Marked ${result.updated} notification(s) read` : "All caught up");
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, "Could not mark notifications read"));
+    }
+  });
+
+  const unreadCount = (notificationsQuery.data ?? []).filter((item) => !item.isRead).length;
 
   return (
     <div className="space-y-6">
@@ -85,8 +101,19 @@ export default function NotificationsPage() {
         }
       />
       <Card>
-        <CardHeader>
+        <CardHeader className="flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>{isPortfolioScoped && activePortfolio ? `${activePortfolio.name} inbox` : "Account inbox"}</CardTitle>
+          {unreadCount > 0 ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={markAllRead.isPending}
+              onClick={() => markAllRead.mutate()}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Mark all read ({unreadCount})
+            </Button>
+          ) : null}
         </CardHeader>
         <CardContent className="space-y-3">
           {notificationsQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading notifications...</p> : null}
@@ -124,5 +151,3 @@ export default function NotificationsPage() {
     </div>
   );
 }
-
-

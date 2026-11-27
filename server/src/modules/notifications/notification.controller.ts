@@ -16,5 +16,11 @@ export const notificationController = {
   async markRead(req: Request, res: Response): Promise<Response> {
     const notification = await notificationService.markRead(req.user!.id, requestParam(req, "notificationId"));
     return ok(res, notification);
+  },
+
+  async markAllRead(req: Request, res: Response): Promise<Response> {
+    const portfolioId = req.query.portfolioId ? String(req.query.portfolioId) : undefined;
+    const result = await notificationService.markAllRead(req.user!.id, portfolioId);
+    return ok(res, result);
   }
 };
