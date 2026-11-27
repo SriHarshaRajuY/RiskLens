@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   Activity,
   Bell,
@@ -230,6 +231,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               size="sm"
               onClick={async () => {
                 await logout();
+                toast.success("Signed out safely");
                 router.replace("/");
               }}
             >

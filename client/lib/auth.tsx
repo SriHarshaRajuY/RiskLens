@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { apiRequest, clearCsrfToken, jsonBody, setCsrfToken } from "@/lib/api";
+import { queryClient } from "@/lib/queryClient";
 import { disconnectSocket } from "@/lib/socket";
 import type { AuthPayload, User } from "@/types/auth";
 
@@ -122,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }).catch(() => undefined);
         clearCsrfToken();
         disconnectSocket();
+        queryClient.clear();
         setUser(null);
         storeUser(null);
         setIsLoading(false);

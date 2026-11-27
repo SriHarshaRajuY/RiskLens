@@ -118,6 +118,27 @@ export default function DashboardPage() {
         openLabel="Open details"
       />
 
+      {!summaryQuery.isLoading && !hasTrades ? (
+        <Card className="border-primary/25 bg-primary/[0.03]">
+          <CardHeader className="pb-3">
+            <CardTitle>Get started with {selected.name}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              Your portfolio workspace is ready. Add a trade or upload a CSV file to calculate holdings, risk metrics, and your Risk &amp; Alert Summary.
+            </p>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Button asChild size="sm">
+                <Link href={`/dashboard/portfolios/${selectedPortfolioId}`}>Add trades or CSV</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/dashboard/alerts">Set risk alerts</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           title="Portfolio value"

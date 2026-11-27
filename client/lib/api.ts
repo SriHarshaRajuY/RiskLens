@@ -78,12 +78,44 @@ function validationDetailMessage(details: unknown): string | null {
   return null;
 }
 
-export function getApiErrorMessage(error: unknown, fallback = "Request failed"): string {
+export function getApiErrorMessage(error: unknown, fallback = "Something went wrong. Please try again."): string {
   if (error instanceof ApiError) {
-    return validationDetailMessage(error.details) ?? error.message ?? fallback;
+    const detail = validationDetailMessage(error.details);
+    if (detail) return detail;
+
+    if (error.status === 0 || error.code === "NETWORK_ERROR") {
+      return "Unable to reach RiskLens right now. Please check your connection and try again.";
+    }
+    if (error.status === 408 || error.code === "REQUEST_TIMEOUT") {
+      return "That took longer than expected. Please try again in a moment.";
+    }
+    if (error.code === "INVALID_API_RESPONSE") {
+      return "We received an unexpected response. Please try again in a moment.";
+    }
+    if (error.status === 401) {
+      return error.message && !/unauthorized|jwt|token/i.test(error.message)
+        ? error.message
+        : "Your session has expired. Please sign in again.";
+    }
+    if (error.status === 403) {
+      return "You don't have permission for this action. Refresh the page and try again.";
+    }
+    if (error.status === 429) {
+      return "You're making requests too quickly. Please wait a few seconds and try again.";
+    }
+    if (error.status >= 500) {
+      return "Our service ran into a temporary hiccup. Please try again shortly.";
+    }
+
+    return error.message || fallback;
   }
 
-  if (error instanceof Error) return error.message;
+  if (error instanceof Error) {
+    if (/failed to fetch|network|load failed/i.test(error.message)) {
+      return "Unable to reach RiskLens right now. Please check your connection and try again.";
+    }
+    return error.message;
+  }
   return fallback;
 }
 
@@ -137,7 +169,7 @@ async function parsePayload<T>(response: Response): Promise<ApiResponse<T> & { d
       success: false,
       data: undefined as T,
       code: "INVALID_API_RESPONSE",
-      message: "The server returned an unreadable response"
+      message: "We received an unexpected response. Please try again in a moment."
     };
   }
 }
@@ -173,18 +205,23 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
     const payload = await parsePayload<T>(response);
     if (!response.ok || payload.success === false) {
-      throw new ApiError(response.status, payload.code ?? "API_ERROR", payload.message ?? "Request failed", payload.details);
+      throw new ApiError(
+        response.status,
+        payload.code ?? "API_ERROR",
+        payload.message ?? "Something went wrong. Please try again.",
+        payload.details
+      );
     }
     return payload.data;
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new ApiError(408, "REQUEST_TIMEOUT", "The request timed out. Please retry.");
+      throw new ApiError(408, "REQUEST_TIMEOUT", "That took longer than expected. Please try again in a moment.");
     }
     if (error instanceof TypeError && /failed to fetch/i.test(error.message)) {
       throw new ApiError(
         0,
         "NETWORK_ERROR",
-        "RiskLens could not connect to the service. Please try again in a moment."
+        "Unable to reach RiskLens right now. Please check your connection and try again."
       );
     }
     throw error;

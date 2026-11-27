@@ -2,17 +2,15 @@ import Link from "next/link";
 import {
   Activity,
   ArrowRight,
-  BarChart3,
   BellRing,
-  CheckCircle2,
   FileText,
   LineChart,
   LockKeyhole,
   ShieldCheck,
-  Sparkles,
   UploadCloud,
   Zap
 } from "lucide-react";
+import { InteractivePreview } from "@/components/landing/InteractivePreview";
 import { Button } from "@/components/ui/button";
 
 const capabilities = [
@@ -51,76 +49,6 @@ const platform = [
   ["Instant live updates", "See upload progress, triggered risk alerts, and activity updates appear automatically—no refresh needed."],
   ["Always-on reliability", "Built-in safeguards keep your portfolio analytics and risk summaries available at all times."]
 ];
-
-function PreviewPanel() {
-  return (
-    <div className="rounded-2xl border border-slate-200/90 bg-white/95 p-4 shadow-[0_24px_70px_rgba(15,23,42,0.12)] backdrop-blur sm:p-5">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3.5">
-        <div>
-          <p className="text-sm font-semibold text-slate-950">Core Equity Workspace</p>
-          <p className="text-xs text-slate-500">Holdings, risk score, alerts &amp; plain-English summary</p>
-        </div>
-        <div className="flex items-center gap-2 text-xs font-medium">
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
-            <CheckCircle2 className="h-3 w-3" />
-            Protected
-          </span>
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">USD</span>
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Portfolio value</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums text-slate-950">$148,420</p>
-          <p className="mt-0.5 text-[11px] font-medium text-emerald-700">+$16,240 total gain</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Risk score</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums text-slate-950">42 / 100</p>
-          <p className="mt-0.5 text-[11px] font-medium text-amber-700">Medium exposure</p>
-        </div>
-        <div className="col-span-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3 sm:col-span-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Top position</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums text-slate-950">31.4%</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">AAPL concentration</p>
-        </div>
-      </div>
-
-      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3.5">
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-xs font-semibold text-slate-900">Portfolio value over time</p>
-          <BarChart3 className="h-4 w-4 text-emerald-700" />
-        </div>
-        <div className="flex h-24 items-end gap-1.5" aria-hidden="true">
-          {[38, 44, 41, 52, 49, 61, 58, 66, 63, 75, 72, 86, 84, 92].map((height, index) => (
-            <div
-              key={index}
-              className="flex-1 rounded-t bg-gradient-to-t from-emerald-700/80 to-teal-500/75"
-              style={{ height: `${height}%` }}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-4 rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-3.5">
-        <div className="flex items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-900">
-            <Sparkles className="h-3.5 w-3.5 text-emerald-700" />
-            Risk &amp; Alert Summary
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 shadow-sm">
-            <ShieldCheck className="h-3 w-3 text-emerald-700" />
-            Informational only
-          </span>
-        </div>
-        <p className="mt-2 text-xs leading-relaxed text-slate-700">
-          Based on 24 recorded trades across 5 holdings, your risk score is 42/100 (Medium). AAPL makes up 31.4% of your portfolio value, crossing your 25.0% alert limit.
-        </p>
-      </div>
-    </div>
-  );
-}
 
 export default function LandingPage() {
   return (
@@ -202,7 +130,7 @@ export default function LandingPage() {
           </div>
 
           <div className="animate-page-enter">
-            <PreviewPanel />
+            <InteractivePreview />
           </div>
         </div>
       </section>

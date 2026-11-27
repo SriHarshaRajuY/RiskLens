@@ -7,6 +7,7 @@ import type { AuthPayload } from "@/types/auth";
 
 let socket: Socket | null = null;
 let socketRefreshPromise: Promise<void> | null = null;
+let intentionalDisconnect = false;
 
 function shouldRefreshForSocketError(error: Error): boolean {
   return /auth|jwt|token|unauthorized|expired/i.test(error.message);
@@ -28,7 +29,13 @@ function refreshSocketSession(): Promise<void> {
   return socketRefreshPromise;
 }
 
+export function isIntentionalSocketDisconnect(): boolean {
+  return intentionalDisconnect;
+}
+
 export function getSocket(): Socket | null {
+  intentionalDisconnect = false;
+
   if (!socket) {
     socket = io(SOCKET_URL, {
       withCredentials: true,
@@ -36,9 +43,13 @@ export function getSocket(): Socket | null {
     });
 
     socket.on("connect_error", (error) => {
-      if (!socket || !shouldRefreshForSocketError(error)) return;
+      if (!socket || intentionalDisconnect || !shouldRefreshForSocketError(error)) return;
       refreshSocketSession()
-        .then(() => socket?.connect())
+        .then(() => {
+          if (!intentionalDisconnect) {
+            socket?.connect();
+          }
+        })
         .catch(() => undefined);
     });
   }
@@ -47,6 +58,9 @@ export function getSocket(): Socket | null {
 }
 
 export function disconnectSocket(): void {
-  socket?.disconnect();
-  socket = null;
+  intentionalDisconnect = true;
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
 }
