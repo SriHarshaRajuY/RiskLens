@@ -39,7 +39,11 @@ const envSchema = z
     ALPHA_VANTAGE_API_KEY: z.string().trim().optional().default(""),
     MARKET_DATA_FALLBACK: z.preprocess(legacyMarketFallbackValue, z.enum(["fallback", "none"]).default("fallback")),
     CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(45),
-    CSV_BATCH_SIZE: z.coerce.number().int().positive().default(500)
+    CSV_BATCH_SIZE: z.coerce.number().int().positive().default(500),
+    GEMINI_API_KEY: z.string().trim().optional().default(""),
+    GEMINI_MODEL: z.string().trim().default("gemini-2.5-flash"),
+    GEMINI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(30000).default(8000),
+    GEMINI_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(300)
   })
   .superRefine((value, ctx) => {
     if (value.NODE_ENV === "production" && value.JWT_SECRET.length < 32) {

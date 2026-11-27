@@ -1,9 +1,15 @@
 import { Router } from "express";
+import { z } from "zod";
 import { requireAuth } from "../../middleware/auth.middleware.js";
-import { validateParams } from "../../middleware/validate.middleware.js";
+import { narrativeRateLimiter } from "../../middleware/rateLimit.middleware.js";
+import { validateParams, validateQuery } from "../../middleware/validate.middleware.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { portfolioIdParamsSchema } from "../../utils/validation.js";
 import { analyticsController } from "./analytics.controller.js";
+
+const riskNarrativeQuerySchema = z.object({
+  refresh: z.enum(["true", "false"]).optional()
+});
 
 export const analyticsRoutes = Router();
 
@@ -33,4 +39,11 @@ analyticsRoutes.get(
   "/portfolios/:portfolioId/pnl",
   validateParams(portfolioIdParamsSchema),
   asyncHandler(analyticsController.pnl)
+);
+analyticsRoutes.get(
+  "/portfolios/:portfolioId/risk-narrative",
+  narrativeRateLimiter,
+  validateParams(portfolioIdParamsSchema),
+  validateQuery(riskNarrativeQuerySchema),
+  asyncHandler(analyticsController.riskNarrative)
 );

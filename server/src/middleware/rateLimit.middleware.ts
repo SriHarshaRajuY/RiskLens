@@ -24,3 +24,17 @@ export const authRateLimiter = rateLimit({
     });
   }
 }) as unknown as RequestHandler;
+
+export const narrativeRateLimiter = rateLimit({
+  windowMs: env.RATE_LIMIT_WINDOW_MS,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) => {
+    res.status(429).json({
+      success: false,
+      code: "NARRATIVE_RATE_LIMITED",
+      message: "Too many risk summary requests. Please wait before regenerating."
+    });
+  }
+}) as unknown as RequestHandler;

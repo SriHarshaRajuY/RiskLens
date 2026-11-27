@@ -186,7 +186,10 @@ export async function deleteByPattern(pattern: string, requestId?: string): Prom
   }
 }
 
-export function portfolioCacheKey(portfolioId: string, metric: "summary" | "holdings" | "risk" | "returns"): string {
+export function portfolioCacheKey(
+  portfolioId: string,
+  metric: "summary" | "holdings" | "risk" | "returns" | "risk-narrative"
+): string {
   return `portfolio:${portfolioId}:${metric}`;
 }
 

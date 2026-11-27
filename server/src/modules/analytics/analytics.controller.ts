@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { ok } from "../../utils/apiResponse.js";
 import { requestParam } from "../../utils/request.js";
 import { analyticsService } from "./analytics.service.js";
+import { riskNarrativeService } from "./riskNarrative.service.js";
 
 export const analyticsController = {
   async summary(req: Request, res: Response): Promise<Response> {
@@ -26,6 +27,15 @@ export const analyticsController = {
 
   async pnl(req: Request, res: Response): Promise<Response> {
     const data = await analyticsService.pnl(req.user!.id, requestParam(req, "portfolioId"), req.requestId);
+    return ok(res, data);
+  },
+
+  async riskNarrative(req: Request, res: Response): Promise<Response> {
+    const refresh = req.query.refresh === "true";
+    const data = await riskNarrativeService.explainPortfolioRisk(req.user!.id, requestParam(req, "portfolioId"), {
+      refresh,
+      requestId: req.requestId
+    });
     return ok(res, data);
   }
 };
