@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { env } from "../../config/env.js";
 import { logger } from "../../config/logger.js";
+import { getCache, setCache } from "../../utils/cache.js";
 import { toObjectId } from "../../utils/objectId.js";
 import { activityService } from "../activity/activity.service.js";
 import { Alert } from "../alerts/alert.model.js";
@@ -103,7 +105,8 @@ const PROHIBITED_QUESTION_PATTERNS = [
   /\b(recommend|suggest) (buying|selling|rebalancing|allocating|a stock|stocks|trades)\b/i,
   /\bhow (should|do) i rebalance\b/i,
   /\b(will|is|are|could|might) .+ (going to |likely to )?(go up|go down|rise|fall|crash|rally|beat|outperform|moon)\b/i,
-  /\b(predict|forecast|price target|future return|future performance)\b/i
+  /\b(predict|forecast|price target|future return|future performance)\b/i,
+  /\b(ignore (all )?(previous|above|prior) instructions|system prompt|reveal your prompt|jailbreak|bypass)\b/i
 ];
 
 const ADVISORY_RESPONSE_PATTERNS = [
@@ -115,6 +118,25 @@ const ADVISORY_RESPONSE_PATTERNS = [
   /\bwill (outperform|rise|fall|crash|rally|gain)\b/i,
   /\bguaranteed\b/i
 ];
+
+function sanitizeQuestionInput(raw: string): string {
+  return raw.replace(/[\u0000-\u001F\u007F]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function stripJsonCodeFences(raw: string): string {
+  const trimmed = raw.trim();
+  const match = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(trimmed);
+  return match?.[1]?.trim() ?? trimmed;
+}
+
+const GEMINI_COOLDOWN_MS = 60_000;
+let geminiCooldownUntil = 0;
+let geminiCooldownReason: QaFallbackReason | null = null;
+
+export function resetQaCircuitBreakerForTests(): void {
+  geminiCooldownUntil = 0;
+  geminiCooldownReason = null;
+}
 
 export function isAdvisoryOrPredictiveQuestion(question: string): boolean {
   return PROHIBITED_QUESTION_PATTERNS.some((pattern) => pattern.test(question));
@@ -394,7 +416,12 @@ async function callGeminiPortfolioQa(
     return { ok: false, reason: "missing_api_key" };
   }
 
+  if (Date.now() < geminiCooldownUntil && geminiCooldownReason) {
+    return { ok: false, reason: geminiCooldownReason, detail: "Cooldown active after recent provider limit/error" };
+  }
+
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(env.GEMINI_MODEL)}:generateContent`;
+  const isGemini25 = /gemini-2\.5/i.test(env.GEMINI_MODEL);
 
   try {
     const response = await fetch(endpoint, {
@@ -419,7 +446,8 @@ async function callGeminiPortfolioQa(
         ],
         generationConfig: {
           temperature: 0.1,
-          maxOutputTokens: 900,
+          maxOutputTokens: 2048,
+          ...(isGemini25 ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
           responseMimeType: "application/json",
           responseSchema: GEMINI_QA_SCHEMA
         }
@@ -429,28 +457,39 @@ async function callGeminiPortfolioQa(
 
     if (response.status === 429) {
       const errorText = await response.text().catch(() => "");
+      geminiCooldownUntil = Date.now() + GEMINI_COOLDOWN_MS;
+      geminiCooldownReason = "quota_exceeded";
       return { ok: false, reason: "quota_exceeded", detail: errorText.slice(0, 200) };
     }
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => "");
       const isQuota = /RESOURCE_EXHAUSTED|quota/i.test(errorText);
+      const isAuthOrBadKey = response.status === 401 || response.status === 403 || /API_KEY_INVALID/i.test(errorText);
+      if (isAuthOrBadKey) {
+        logger.error({ requestId, status: response.status }, "Gemini API key was rejected by Google; activating fallback cooldown");
+      }
+      const reason: QaFallbackReason = isQuota ? "quota_exceeded" : "provider_error";
+      if (isQuota || isAuthOrBadKey) {
+        geminiCooldownUntil = Date.now() + GEMINI_COOLDOWN_MS;
+        geminiCooldownReason = reason;
+      }
       return {
         ok: false,
-        reason: isQuota ? "quota_exceeded" : "provider_error",
+        reason,
         detail: `HTTP ${response.status}: ${errorText.slice(0, 200)}`
       };
     }
 
     const body = (await response.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      candidates?: Array<{ finishReason?: string; content?: { parts?: Array<{ text?: string }> } }>;
     };
     const rawText = body.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!rawText) {
-      return { ok: false, reason: "invalid_output", detail: "Empty candidate text" };
+      return { ok: false, reason: "invalid_output", detail: `Empty candidate (${body.candidates?.[0]?.finishReason ?? "unknown"})` };
     }
 
-    const parsedJson = JSON.parse(rawText) as unknown;
+    const parsedJson = JSON.parse(stripJsonCodeFences(rawText)) as unknown;
     const validated = geminiQaSchema.safeParse(parsedJson);
     if (!validated.success) {
       return { ok: false, reason: "invalid_output", detail: "Schema validation failed" };
@@ -461,6 +500,8 @@ async function callGeminiPortfolioQa(
       return { ok: false, reason: "invalid_output", detail: "Compliance guardrail triggered" };
     }
 
+    geminiCooldownUntil = 0;
+    geminiCooldownReason = null;
     return { ok: true, data: validated.data };
   } catch (error) {
     if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
@@ -482,7 +523,7 @@ export async function generatePortfolioQaResponse(
   context: AnonymizedQaContext,
   requestId?: string
 ): Promise<PortfolioQaResponse> {
-  const trimmed = question.trim();
+  const trimmed = sanitizeQuestionInput(question);
   const answeredAt = new Date().toISOString();
 
   if (isAdvisoryOrPredictiveQuestion(trimmed)) {
@@ -537,6 +578,11 @@ export async function generatePortfolioQaResponse(
   };
 }
 
+function qaCacheKey(portfolioId: string, question: string): string {
+  const hash = createHash("sha256").update(sanitizeQuestionInput(question).toLowerCase()).digest("hex").slice(0, 16);
+  return `portfolio:${portfolioId}:qa:${hash}`;
+}
+
 export const portfolioQaService = {
   async ask(
     userId: string,
@@ -544,6 +590,16 @@ export const portfolioQaService = {
     question: string,
     options: { requestId?: string } = {}
   ): Promise<PortfolioQaResponse> {
+    const cleanQuestion = sanitizeQuestionInput(question);
+    const cacheKey = qaCacheKey(portfolioId, cleanQuestion);
+
+    if (env.GEMINI_API_KEY && !isAdvisoryOrPredictiveQuestion(cleanQuestion)) {
+      const cached = await getCache<PortfolioQaResponse>(cacheKey, options.requestId);
+      if (cached && cached.source === "gemini") {
+        return cached;
+      }
+    }
+
     const [summary, risk, holdings, returns, alerts, recentRawTrades] = await Promise.all([
       analyticsService.summary(userId, portfolioId, options.requestId),
       analyticsService.risk(userId, portfolioId, options.requestId),
@@ -565,7 +621,7 @@ export const portfolioQaService = {
     ]);
 
     let runningPeak = 0;
-    const recentSnapshots = returns.slice(-30).map((point) => {
+    const allWithDrawdown = returns.map((point) => {
       if (point.totalValue > runningPeak) runningPeak = point.totalValue;
       const drawdownFromPeakPct = runningPeak > 0 ? Number((((runningPeak - point.totalValue) / runningPeak) * 100).toFixed(2)) : 0;
       return {
@@ -575,6 +631,7 @@ export const portfolioQaService = {
         drawdownFromPeakPct
       };
     });
+    const recentSnapshots = allWithDrawdown.slice(-30);
 
     const currentAlertValues: Record<"DAILY_LOSS" | "MAX_DRAWDOWN" | "CONCENTRATION" | "VOLATILITY", number> = {
       DAILY_LOSS: Math.abs(Math.min((summary.dailyReturn ?? 0) * 100, 0)),
@@ -640,7 +697,11 @@ export const portfolioQaService = {
       })
     };
 
-    const result = await generatePortfolioQaResponse(question, context, options.requestId);
+    const result = await generatePortfolioQaResponse(cleanQuestion, context, options.requestId);
+
+    if (result.source === "gemini") {
+      await setCache(cacheKey, result, { ttlSeconds: env.GEMINI_CACHE_TTL_SECONDS });
+    }
 
     await activityService
       .record({

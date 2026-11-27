@@ -13,6 +13,8 @@ const emptyStringToUndefined = (value: unknown): unknown =>
   typeof value === "string" && value.trim().length === 0 ? undefined : value;
 
 const optionalTrimmedString = z.preprocess(emptyStringToUndefined, z.string().trim().optional());
+const stripWrappingQuotes = (value: unknown): unknown =>
+  typeof value === "string" ? value.trim().replace(/^['"]|['"]$/g, "").trim() : value;
 const legacyMarketFallbackValue = (value: unknown): unknown => value === "demo" ? "fallback" : value;
 
 const envSchema = z
@@ -40,7 +42,7 @@ const envSchema = z
     MARKET_DATA_FALLBACK: z.preprocess(legacyMarketFallbackValue, z.enum(["fallback", "none"]).default("fallback")),
     CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(45),
     CSV_BATCH_SIZE: z.coerce.number().int().positive().default(500),
-    GEMINI_API_KEY: z.string().trim().optional().default(""),
+    GEMINI_API_KEY: z.preprocess(stripWrappingQuotes, z.string().optional().default("")),
     GEMINI_MODEL: z.string().trim().default("gemini-2.5-flash"),
     GEMINI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(30000).default(8000),
     GEMINI_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(300)

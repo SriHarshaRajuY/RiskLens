@@ -50,16 +50,21 @@ function fallbackHint(item: PortfolioQaResponse): string | null {
 
 export function PortfolioQaPanel({ portfolioId }: { portfolioId: string }) {
   const [question, setQuestion] = useState("");
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
   const { history, askQuestion, clearHistory, isAsking } = usePortfolioQa(portfolioId);
 
   async function submitQuestion(rawText: string): Promise<void> {
     const trimmed = rawText.trim();
     if (trimmed.length < 3 || isAsking) return;
+    setPendingQuestion(trimmed);
+    setQuestion("");
     try {
       await askQuestion(trimmed);
-      setQuestion("");
     } catch (error) {
+      setQuestion(trimmed);
       toast.error(getApiErrorMessage(error, "Could not answer that question right now."));
+    } finally {
+      setPendingQuestion(null);
     }
   }
 
@@ -112,7 +117,7 @@ export function PortfolioQaPanel({ portfolioId }: { portfolioId: string }) {
           ))}
         </div>
 
-        {history.length > 0 ? (
+        {history.length > 0 || pendingQuestion ? (
           <div className="max-h-[440px] space-y-4 overflow-y-auto pr-1">
             {history.map((item, idx) => (
               <div key={`${item.answeredAt}-${idx}`} className="space-y-2.5 animate-in fade-in duration-150">
@@ -175,6 +180,19 @@ export function PortfolioQaPanel({ portfolioId }: { portfolioId: string }) {
                 </div>
               </div>
             ))}
+            {pendingQuestion ? (
+              <div className="space-y-2.5 animate-in fade-in duration-150">
+                <div className="flex justify-end">
+                  <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground shadow-sm">
+                    {pendingQuestion}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2.5 rounded-xl border bg-muted/25 p-4 text-xs text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span>Reviewing your portfolio records...</span>
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="rounded-xl border border-dashed bg-muted/15 p-4 text-xs leading-relaxed text-muted-foreground">

@@ -31,6 +31,7 @@ export const alertService = {
 
     await Promise.all([
       deleteByPattern(portfolioCacheKey(portfolioId, "risk-narrative")),
+      deleteByPattern(`portfolio:${portfolioId}:qa:*`),
       activityService.record({
         userId,
         portfolioId,
@@ -72,6 +73,7 @@ export const alertService = {
 
     await Promise.all([
       deleteByPattern(portfolioCacheKey(alert.portfolioId.toString(), "risk-narrative")),
+      deleteByPattern(`portfolio:${alert.portfolioId.toString()}:qa:*`),
       activityService.record({
         userId,
         portfolioId: alert.portfolioId,
@@ -94,6 +96,7 @@ export const alertService = {
 
     await Promise.all([
       deleteByPattern(portfolioCacheKey(alert.portfolioId.toString(), "risk-narrative")),
+      deleteByPattern(`portfolio:${alert.portfolioId.toString()}:qa:*`),
       activityService.record({
         userId,
         portfolioId: alert.portfolioId,
@@ -155,7 +158,8 @@ export const alertService = {
           message: `${alert.type} alert triggered at ${value.toFixed(2)}%`,
           metadata: { alertId: alert._id.toString(), value, threshold }
         }),
-        deleteByPattern(portfolioCacheKey(alert.portfolioId.toString(), "risk-narrative"), input.requestId)
+        deleteByPattern(portfolioCacheKey(alert.portfolioId.toString(), "risk-narrative"), input.requestId),
+        deleteByPattern(`portfolio:${alert.portfolioId.toString()}:qa:*`, input.requestId)
       ]);
 
       triggered.push({
