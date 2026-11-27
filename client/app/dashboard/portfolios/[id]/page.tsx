@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, Pencil, Trash2, X } from "lucide-react";
+import { ArrowLeft, BellRing, BriefcaseBusiness, ChartLine, Check, Pencil, ShieldAlert, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { ActivityFeed } from "@/components/activity/ActivityFeed";
@@ -15,6 +15,7 @@ import { PortfolioQaPanel } from "@/components/dashboard/PortfolioQaPanel";
 import { RiskMetricsPanel } from "@/components/dashboard/RiskMetricsPanel";
 import { RiskNarrativeCard } from "@/components/dashboard/RiskNarrativeCard";
 import { RiskScoreCard } from "@/components/dashboard/RiskScoreCard";
+import { WorkspaceTabs, useWorkspaceTab, type WorkspaceTabItem } from "@/components/dashboard/WorkspaceTabs";
 import { TradeForm } from "@/components/forms/TradeForm";
 import { TradeUploadBox } from "@/components/forms/TradeUploadBox";
 import { HoldingsTable } from "@/components/tables/HoldingsTable";
@@ -26,6 +27,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { persistActivePortfolioId } from "@/hooks/useActivePortfolio";
 import { usePortfolioSummary } from "@/hooks/usePortfolioSummary";
 import { useRiskMetrics } from "@/hooks/useRiskMetrics";
+import { useRiskNarrative } from "@/hooks/useRiskNarrative";
 import { apiRequest, getApiErrorMessage, jsonBody } from "@/lib/api";
 import { isObjectId } from "@/lib/mongo";
 import { formatCurrency } from "@/lib/utils";
@@ -33,6 +35,9 @@ import type { ActivityLog } from "@/types/activity";
 import type { Holding, ReturnPoint } from "@/types/analytics";
 import type { Portfolio } from "@/types/portfolio";
 import type { Trade } from "@/types/trade";
+
+const DETAIL_TABS = ["overview", "holdings", "risk", "assistant", "alerts"] as const;
+type DetailTab = (typeof DETAIL_TABS)[number];
 
 const tradeEditSchema = z.object({
   symbol: z.string().trim().min(1, "Symbol is required").max(12, "Symbol must be 12 characters or fewer").regex(/^[A-Za-z][A-Za-z0-9.-]*$/, "Use a valid market symbol").transform((value) => value.toUpperCase()),
@@ -65,6 +70,7 @@ export default function PortfolioDetailPage() {
   const portfolioId = params.id;
   const isValidPortfolioId = isObjectId(portfolioId);
   const [editingTrade, setEditingTrade] = useState<TradeEditValues | null>(null);
+  const [activeTab, setActiveTab] = useWorkspaceTab<DetailTab>(DETAIL_TABS, "overview");
 
   const portfolioQuery = useQuery({
     queryKey: ["portfolio", portfolioId],
@@ -75,6 +81,7 @@ export default function PortfolioDetailPage() {
   const portfolioReady = isValidPortfolioId && portfolioQuery.isSuccess;
   const summaryQuery = usePortfolioSummary(portfolioReady ? portfolioId : undefined);
   const riskQuery = useRiskMetrics(portfolioReady ? portfolioId : undefined);
+  const narrativeQuery = useRiskNarrative(portfolioReady ? portfolioId : undefined);
   const holdingsQuery = useQuery({
     queryKey: ["holdings", portfolioId],
     queryFn: () => apiRequest<Holding[]>(`/portfolios/${portfolioId}/holdings`),
@@ -137,6 +144,7 @@ export default function PortfolioDetailPage() {
   const currency = summary?.baseCurrency ?? portfolioQuery.data?.baseCurrency ?? "USD";
   const hasTrades = (summary?.tradeCount ?? 0) > 0;
   const loadingValue = summaryQuery.isLoading ? "Loading" : "-";
+  const breachedAlertsCount = (narrativeQuery.data?.alertNarratives ?? []).filter((a) => a.status === "BREACHED").length;
 
   function beginTradeEdit(trade: Trade): void {
     setEditingTrade({
@@ -193,12 +201,31 @@ export default function PortfolioDetailPage() {
     );
   }
 
+  const tabs: WorkspaceTabItem<DetailTab>[] = [
+    { id: "overview", label: "Performance", icon: ChartLine },
+    { id: "holdings", label: "Holdings & Trades", icon: BriefcaseBusiness, badge: holdingsQuery.data?.length },
+    {
+      id: "risk",
+      label: "Risk & Summary",
+      icon: ShieldAlert,
+      badge: breachedAlertsCount,
+      badgeTone: "danger"
+    },
+    { id: "assistant", label: "Ask AI", icon: Sparkles },
+    { id: "alerts", label: "Alerts & Activity", icon: BellRing }
+  ];
+
   return (
-    <div className="space-y-7">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">Portfolio detail</p>
-          <h1 className="break-words text-2xl font-semibold sm:text-3xl">{portfolioQuery.data?.name ?? "Portfolio"}</h1>
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">Portfolio workspace</p>
+          <h1 className="mt-1 break-words text-2xl font-semibold tracking-tight sm:text-3xl">
+            {portfolioQuery.data?.name ?? "Portfolio"}
+          </h1>
+          {portfolioQuery.data?.description ? (
+            <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">{portfolioQuery.data.description}</p>
+          ) : null}
         </div>
         <Button asChild variant="outline" className="w-full sm:w-auto">
           <Link href="/dashboard/portfolios">
@@ -208,169 +235,190 @@ export default function PortfolioDetailPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Value" value={hasTrades ? formatCurrency(summary?.totalPortfolioValue ?? 0, currency) : loadingValue} />
-        <MetricCard title="Invested" value={hasTrades ? formatCurrency(summary?.totalInvestedAmount ?? 0, currency) : loadingValue} />
-        <MetricCard title="Realized" value={hasTrades ? formatCurrency(summary?.realizedPnl ?? 0, currency) : loadingValue} />
-        <MetricCard
-          title="Unrealized"
-          value={hasTrades ? formatCurrency(summary?.unrealizedPnl ?? 0, currency) : loadingValue}
-          tone={(summary?.unrealizedPnl ?? 0) >= 0 ? "good" : "bad"}
-        />
-      </div>
+      <WorkspaceTabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <PerformanceChart data={returnsQuery.data ?? []} currency={currency} />
-        <RiskScoreCard risk={riskQuery.data} />
-      </div>
+      {activeTab === "overview" ? (
+        <div key="overview" className="space-y-6 animate-in fade-in duration-150">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricCard title="Value" value={hasTrades ? formatCurrency(summary?.totalPortfolioValue ?? 0, currency) : loadingValue} />
+            <MetricCard title="Invested" value={hasTrades ? formatCurrency(summary?.totalInvestedAmount ?? 0, currency) : loadingValue} />
+            <MetricCard title="Realized" value={hasTrades ? formatCurrency(summary?.realizedPnl ?? 0, currency) : loadingValue} />
+            <MetricCard
+              title="Unrealized"
+              value={hasTrades ? formatCurrency(summary?.unrealizedPnl ?? 0, currency) : loadingValue}
+              tone={(summary?.unrealizedPnl ?? 0) >= 0 ? "good" : "bad"}
+            />
+          </div>
 
-      <div className="grid gap-5 xl:grid-cols-2">
-        <HoldingsTable holdings={holdingsQuery.data ?? []} currency={currency} />
-        <RiskMetricsPanel risk={riskQuery.data} dailyReturn={summary?.dailyReturn} />
-      </div>
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+            <PerformanceChart data={returnsQuery.data ?? []} currency={currency} />
+            <RiskScoreCard risk={riskQuery.data} />
+          </div>
+        </div>
+      ) : null}
 
-      <RiskNarrativeCard portfolioId={portfolioId} />
+      {activeTab === "holdings" ? (
+        <div key="holdings" className="space-y-6 animate-in fade-in duration-150">
+          <HoldingsTable holdings={holdingsQuery.data ?? []} currency={currency} />
 
-      <PortfolioQaPanel portfolioId={portfolioId} />
+          <div className="grid gap-5 xl:grid-cols-2">
+            <TradeUploadBox portfolioId={portfolioId} />
+            <TradeForm portfolioId={portfolioId} />
+          </div>
 
-      <div className="grid gap-5 xl:grid-cols-2">
-        <TradeUploadBox portfolioId={portfolioId} />
-        <TradeForm portfolioId={portfolioId} />
-      </div>
-
-      <AlertsPanel portfolioId={portfolioId} />
-
-      <div className="grid gap-5 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent trades</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {tradesQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading trades...</p> : null}
-            {tradesQuery.isError ? (
-              <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                Trades could not be loaded. Please check your connection and try again.
-              </div>
-            ) : null}
-            {!tradesQuery.isLoading && !tradesQuery.isError && (tradesQuery.data ?? []).length === 0 ? (
-              <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                No trades recorded yet.
-              </div>
-            ) : null}
-            {(tradesQuery.data ?? []).length > 0 ? (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Symbol</TableHead>
-                      <TableHead>Side</TableHead>
-                      <TableHead className="text-right">Qty</TableHead>
-                      <TableHead className="text-right">Price</TableHead>
-                      <TableHead className="text-right">Fees</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(tradesQuery.data ?? []).map((trade) => {
-                      const isEditing = editingTrade?.id === trade._id;
-                      return (
-                        <TableRow key={trade._id}>
-                          <TableCell className="min-w-36">
-                            {isEditing && editingTrade ? (
-                              <Input type="date" value={editingTrade.tradeDate} onChange={(event) => setEditingTrade({ ...editingTrade, tradeDate: event.target.value })} />
-                            ) : (
-                              new Date(trade.tradeDate).toISOString().slice(0, 10)
-                            )}
-                          </TableCell>
-                          <TableCell className="min-w-32">
-                            {isEditing && editingTrade ? (
-                              <Input value={editingTrade.symbol} onChange={(event) => setEditingTrade({ ...editingTrade, symbol: event.target.value })} />
-                            ) : (
-                              trade.symbol
-                            )}
-                          </TableCell>
-                          <TableCell className="min-w-28">
-                            {isEditing && editingTrade ? (
-                              <select
-                                className="h-10 w-full rounded-md border bg-background px-3 text-sm font-medium outline-none transition focus:ring-2 focus:ring-ring"
-                                value={editingTrade.side}
-                                onChange={(event) => setEditingTrade({ ...editingTrade, side: event.target.value as Trade["side"] })}
-                              >
-                                <option value="BUY">BUY</option>
-                                <option value="SELL">SELL</option>
-                              </select>
-                            ) : (
-                              trade.side
-                            )}
-                          </TableCell>
-                          <TableCell className="min-w-28 text-right">
-                            {isEditing && editingTrade ? (
-                              <Input type="number" step="0.0001" value={editingTrade.quantity} onChange={(event) => setEditingTrade({ ...editingTrade, quantity: Number(event.target.value) })} />
-                            ) : (
-                              trade.quantity
-                            )}
-                          </TableCell>
-                          <TableCell className="min-w-32 text-right tabular-nums">
-                            {isEditing && editingTrade ? (
-                              <Input type="number" step="0.01" value={editingTrade.price} onChange={(event) => setEditingTrade({ ...editingTrade, price: Number(event.target.value) })} />
-                            ) : (
-                              formatCurrency(trade.price, currency)
-                            )}
-                          </TableCell>
-                          <TableCell className="min-w-28 text-right tabular-nums">
-                            {isEditing && editingTrade ? (
-                              <Input type="number" step="0.01" value={editingTrade.fees} onChange={(event) => setEditingTrade({ ...editingTrade, fees: Number(event.target.value) })} />
-                            ) : (
-                              formatCurrency(trade.fees ?? 0, currency)
-                            )}
-                          </TableCell>
-                          <TableCell className="min-w-40">
-                            <div className="flex justify-end gap-2">
-                              {isEditing ? (
-                                <>
-                                  <Button size="sm" disabled={updateTradeMutation.isPending} onClick={saveTradeEdit}>
-                                    <Check className="h-4 w-4" />
-                                    Save
-                                  </Button>
-                                  <Button variant="outline" size="sm" onClick={() => setEditingTrade(null)}>
-                                    <X className="h-4 w-4" />
-                                    Cancel
-                                  </Button>
-                                </>
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent trades</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {tradesQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading trades...</p> : null}
+              {tradesQuery.isError ? (
+                <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                  Trades could not be loaded. Please check your connection and try again.
+                </div>
+              ) : null}
+              {!tradesQuery.isLoading && !tradesQuery.isError && (tradesQuery.data ?? []).length === 0 ? (
+                <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                  No trades recorded yet.
+                </div>
+              ) : null}
+              {(tradesQuery.data ?? []).length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Symbol</TableHead>
+                        <TableHead>Side</TableHead>
+                        <TableHead className="text-right">Qty</TableHead>
+                        <TableHead className="text-right">Price</TableHead>
+                        <TableHead className="text-right">Fees</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(tradesQuery.data ?? []).map((trade) => {
+                        const isEditing = editingTrade?.id === trade._id;
+                        return (
+                          <TableRow key={trade._id}>
+                            <TableCell className="min-w-36">
+                              {isEditing && editingTrade ? (
+                                <Input type="date" value={editingTrade.tradeDate} onChange={(event) => setEditingTrade({ ...editingTrade, tradeDate: event.target.value })} />
                               ) : (
-                                <>
-                                  <Button variant="outline" size="icon" aria-label={`Edit ${trade.symbol} trade`} onClick={() => beginTradeEdit(trade)}>
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <ConfirmAction
-                                    title="Delete trade?"
-                                    description={`${trade.side} ${trade.quantity} ${trade.symbol} at ${formatCurrency(trade.price, currency)}`}
-                                    confirmLabel="Delete"
-                                    variant="destructive"
-                                    disabled={deleteTradeMutation.isPending}
-                                    onConfirm={() => deleteTradeMutation.mutate(trade._id)}
-                                    trigger={(open) => (
-                                      <Button variant="outline" size="icon" className="text-muted-foreground hover:text-destructive" aria-label={`Delete ${trade.symbol} trade`} onClick={open}>
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    )}
-                                  />
-                                </>
+                                new Date(trade.tradeDate).toISOString().slice(0, 10)
                               )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
-        <ActivityFeed items={activityQuery.data ?? []} />
-      </div>
+                            </TableCell>
+                            <TableCell className="min-w-32">
+                              {isEditing && editingTrade ? (
+                                <Input value={editingTrade.symbol} onChange={(event) => setEditingTrade({ ...editingTrade, symbol: event.target.value })} />
+                              ) : (
+                                trade.symbol
+                              )}
+                            </TableCell>
+                            <TableCell className="min-w-28">
+                              {isEditing && editingTrade ? (
+                                <select
+                                  className="h-10 w-full rounded-md border bg-background px-3 text-sm font-medium outline-none transition focus:ring-2 focus:ring-ring"
+                                  value={editingTrade.side}
+                                  onChange={(event) => setEditingTrade({ ...editingTrade, side: event.target.value as Trade["side"] })}
+                                >
+                                  <option value="BUY">BUY</option>
+                                  <option value="SELL">SELL</option>
+                                </select>
+                              ) : (
+                                trade.side
+                              )}
+                            </TableCell>
+                            <TableCell className="min-w-28 text-right tabular-nums">
+                              {isEditing && editingTrade ? (
+                                <Input type="number" step="0.0001" value={editingTrade.quantity} onChange={(event) => setEditingTrade({ ...editingTrade, quantity: Number(event.target.value) })} />
+                              ) : (
+                                trade.quantity
+                              )}
+                            </TableCell>
+                            <TableCell className="min-w-32 text-right tabular-nums">
+                              {isEditing && editingTrade ? (
+                                <Input type="number" step="0.01" value={editingTrade.price} onChange={(event) => setEditingTrade({ ...editingTrade, price: Number(event.target.value) })} />
+                              ) : (
+                                formatCurrency(trade.price, currency)
+                              )}
+                            </TableCell>
+                            <TableCell className="min-w-28 text-right tabular-nums">
+                              {isEditing && editingTrade ? (
+                                <Input type="number" step="0.01" value={editingTrade.fees} onChange={(event) => setEditingTrade({ ...editingTrade, fees: Number(event.target.value) })} />
+                              ) : (
+                                formatCurrency(trade.fees ?? 0, currency)
+                              )}
+                            </TableCell>
+                            <TableCell className="min-w-40">
+                              <div className="flex justify-end gap-2">
+                                {isEditing ? (
+                                  <>
+                                    <Button size="sm" disabled={updateTradeMutation.isPending} onClick={saveTradeEdit}>
+                                      <Check className="h-4 w-4" />
+                                      Save
+                                    </Button>
+                                    <Button variant="outline" size="sm" onClick={() => setEditingTrade(null)}>
+                                      <X className="h-4 w-4" />
+                                      Cancel
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Button variant="outline" size="icon" aria-label={`Edit ${trade.symbol} trade`} onClick={() => beginTradeEdit(trade)}>
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <ConfirmAction
+                                      title="Delete trade?"
+                                      description={`${trade.side} ${trade.quantity} ${trade.symbol} at ${formatCurrency(trade.price, currency)}`}
+                                      confirmLabel="Delete"
+                                      variant="destructive"
+                                      disabled={deleteTradeMutation.isPending}
+                                      onConfirm={() => deleteTradeMutation.mutate(trade._id)}
+                                      trigger={(open) => (
+                                        <Button variant="outline" size="icon" className="text-muted-foreground hover:text-destructive" aria-label={`Delete ${trade.symbol} trade`} onClick={open}>
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                    />
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      {activeTab === "risk" ? (
+        <div key="risk" className="space-y-6 animate-in fade-in duration-150">
+          <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
+            <RiskScoreCard risk={riskQuery.data} />
+            <RiskMetricsPanel risk={riskQuery.data} dailyReturn={summary?.dailyReturn} />
+          </div>
+          <RiskNarrativeCard portfolioId={portfolioId} />
+        </div>
+      ) : null}
+
+      {activeTab === "assistant" ? (
+        <div key="assistant" className="space-y-5 animate-in fade-in duration-150">
+          <PortfolioQaPanel portfolioId={portfolioId} />
+        </div>
+      ) : null}
+
+      {activeTab === "alerts" ? (
+        <div key="alerts" className="grid gap-5 xl:grid-cols-2 animate-in fade-in duration-150">
+          <AlertsPanel portfolioId={portfolioId} />
+          <ActivityFeed items={activityQuery.data ?? []} />
+        </div>
+      ) : null}
     </div>
   );
 }
