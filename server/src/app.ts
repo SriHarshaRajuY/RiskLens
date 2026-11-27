@@ -3,6 +3,8 @@ import cors from "cors";
 import express from "express";
 import type { RequestHandler } from "express";
 import helmet from "helmet";
+import mongoose from "mongoose";
+import { isRedisReady } from "./config/redis.js";
 import { adminRoutes } from "./modules/admin/admin.routes.js";
 import { alertRoutes } from "./modules/alerts/alert.routes.js";
 import { analyticsRoutes } from "./modules/analytics/analytics.routes.js";
@@ -60,6 +62,25 @@ app.get("/health", (_req, res) => {
     data: {
       service: "risklens-api",
       status: "ok",
+      timestamp: new Date().toISOString()
+    }
+  });
+});
+
+app.get("/ready", (_req, res) => {
+  const mongoReady = mongoose.connection.readyState === 1;
+  const redisReady = isRedisReady();
+  const statusCode = mongoReady ? 200 : 503;
+
+  res.status(statusCode).json({
+    success: mongoReady,
+    data: {
+      service: "risklens-api",
+      status: mongoReady ? "ready" : "not_ready",
+      dependencies: {
+        mongodb: mongoReady ? "connected" : "disconnected",
+        redis: redisReady ? "connected" : "degraded"
+      },
       timestamp: new Date().toISOString()
     }
   });

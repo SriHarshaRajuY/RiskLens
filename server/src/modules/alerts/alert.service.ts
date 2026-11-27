@@ -9,13 +9,13 @@ import { paginationMeta, type Pagination } from "../../utils/pagination.js";
 import { Alert } from "./alert.model.js";
 import type { CreateAlertInput, UpdateAlertInput } from "./alert.validation.js";
 
-function severityForBreach(value: number, threshold: number): "LOW" | "MEDIUM" | "HIGH" {
+export function severityForBreach(value: number, threshold: number): "LOW" | "MEDIUM" | "HIGH" {
   if (value >= threshold * 1.5) return "HIGH";
   if (value >= threshold * 1.15) return "MEDIUM";
   return "LOW";
 }
 
-function shouldThrottle(lastTriggeredAt?: Date): boolean {
+export function shouldThrottle(lastTriggeredAt?: Date): boolean {
   if (!lastTriggeredAt) return false;
   return Date.now() - lastTriggeredAt.getTime() < 60 * 60 * 1000;
 }
