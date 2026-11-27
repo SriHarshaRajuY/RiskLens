@@ -1,0 +1,27 @@
+name: Feature Request
+description: Propose a new capability or enhancement for RiskLens
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or goal
+      description: What problem does this solve or what improvement does it bring?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the expected behavior and user experience.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - [ ] Backend endpoint & validation
+        - [ ] Frontend UI & loading/error states
+        - [ ] Unit tests & README updates
