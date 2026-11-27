@@ -45,7 +45,7 @@ export function ConfirmAction({
 
       {open ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px] animate-in fade-in duration-150"
           role="presentation"
           onMouseDown={() => setOpen(false)}
         >
@@ -54,7 +54,7 @@ export function ConfirmAction({
             aria-modal="true"
             aria-labelledby={titleId}
             aria-describedby={description ? descriptionId : undefined}
-            className="w-full max-w-sm rounded-lg border bg-white p-5 shadow-2xl"
+            className="w-full max-w-sm rounded-xl border bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
             onMouseDown={(event) => event.stopPropagation()}
           >
             <h2 id={titleId} className="text-base font-semibold">

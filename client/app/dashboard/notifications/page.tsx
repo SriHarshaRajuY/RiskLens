@@ -54,7 +54,7 @@ export default function NotificationsPage() {
   return (
     <div className="space-y-6">
       <WorkspaceHeader
-        eyebrow="Realtime feed"
+        eyebrow="Live inbox"
         title="Notifications"
         description={
           isPortfolioScoped && activePortfolio
@@ -113,7 +113,7 @@ export default function NotificationsPage() {
               </div>
               {!item.isRead ? (
                 <Button variant="outline" size="sm" className="shrink-0 self-start sm:self-auto" onClick={() => markRead.mutate(item._id)}>
-                  <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                  <CheckCircle2 className="h-4 w-4" />
                   Mark read
                 </Button>
               ) : null}

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { apiRequest, clearCsrfToken, jsonBody, setCsrfToken } from "@/lib/api";
 import { disconnectSocket } from "@/lib/socket";
@@ -44,6 +44,8 @@ function storeUser(user: User | null): void {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(getStoredUser);
+  const hasUserRef = useRef(Boolean(user));
+  hasUserRef.current = Boolean(user);
   const isPublicRoute = PUBLIC_ROUTES.has(pathname ?? "/");
   const [isLoading, setIsLoading] = useState(() => !getStoredUser() && !isPublicRoute);
 
@@ -58,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Only set loading if we don't already have user data in state
-    if (!user) {
+    if (!hasUserRef.current) {
       setIsLoading(true);
     }
 

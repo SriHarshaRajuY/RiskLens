@@ -100,7 +100,7 @@ export default function ImportsPage() {
         openLabel="Open details"
         actions={
           <Button className="w-full sm:w-auto" variant="outline" onClick={() => uploadsQuery.refetch()} disabled={uploadsQuery.isFetching || !activePortfolioId}>
-            <RefreshCw className="h-4 w-4 mr-1.5" />
+            <RefreshCw className={`h-4 w-4 ${uploadsQuery.isFetching ? "animate-spin" : ""}`} />
             Refresh
           </Button>
         }
@@ -108,7 +108,7 @@ export default function ImportsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Upload jobs</CardTitle>
+          <CardTitle>Recent uploads</CardTitle>
         </CardHeader>
         <CardContent>
           {uploadsQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading import history...</p> : null}

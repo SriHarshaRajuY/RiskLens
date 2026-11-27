@@ -1,90 +1,122 @@
 import Link from "next/link";
-import { Activity, ArrowRight, BarChart3, BellRing, DatabaseZap, LineChart, LockKeyhole, ShieldCheck, UploadCloud } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  BarChart3,
+  BellRing,
+  CheckCircle2,
+  FileText,
+  LineChart,
+  LockKeyhole,
+  ShieldCheck,
+  Sparkles,
+  UploadCloud,
+  Zap
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const capabilities = [
   {
-    title: "Trade history intake",
-    description: "Import CSV trades or add records manually, then review validation status and import history.",
+    title: "Spreadsheet & manual tracking",
+    description: "Upload trade CSV files or enter individual trades with automatic checks and clear row-by-row feedback.",
     icon: UploadCloud
   },
   {
-    title: "Portfolio analytics",
-    description: "Track holdings, allocation, realized P&L, unrealized P&L, returns, and risk metrics.",
+    title: "Holdings & P&L analytics",
+    description: "View open positions, allocation weights, realized and unrealized P&L, and daily portfolio performance.",
     icon: LineChart
   },
   {
-    title: "Risk monitoring",
-    description: "Create portfolio thresholds for drawdown, concentration, volatility, and daily loss events.",
+    title: "Custom risk alerts",
+    description: "Set personal thresholds for daily loss, max drawdown, single-stock concentration, and volatility.",
     icon: BellRing
+  },
+  {
+    title: "Plain-English risk summary",
+    description: "Read clear, factual explanations of what your risk score means and which holdings drove each alert.",
+    icon: FileText
   }
 ];
 
 const workflow = [
-  ["Create portfolio", "Set up a dedicated workspace for trades, alerts, activity, and analytics."],
-  ["Import trades", "Upload CSV history or add trades manually, with clear checks before records are saved."],
-  ["Review analytics", "Monitor portfolio value, allocation, risk score, and alert-driven notifications."],
-  ["Evaluate strategy", "Run simple backtests from historical price data without order execution."]
+  ["Create your portfolio", "Set up a dedicated USD or INR workspace for your trades, alerts, and performance history."],
+  ["Add or upload trades", "Import a trade spreadsheet or log trades one by one with built-in quantity checks."],
+  ["Review risk & alerts", "See your risk score, concentration breakdown, and plain-English explanations of any threshold breach."],
+  ["Test simple strategies", "Compare historical buy-and-hold and moving-average results without placing real orders."]
 ];
 
 const platform = [
-  ["Reliable workspace", "Portfolio data, alerts, imports, and activity stay organized in one secure place."],
-  ["Background imports", "Large CSV uploads can be processed while you continue reviewing the portfolio."],
-  ["Live progress", "Upload progress, notifications, and activity updates appear without needing to hunt for them."],
-  ["Fast review", "Portfolio summaries and risk views are designed to load quickly during repeated review."]
+  ["Factual, non-advisory clarity", "Risk summaries explain your own numbers and historical trades clearly—never pushy buy or sell tips."],
+  ["Smooth background imports", "Upload large trade spreadsheets without waiting; your workspace stays fast while records import."],
+  ["Instant live updates", "See upload progress, triggered risk alerts, and activity updates appear automatically—no refresh needed."],
+  ["Always-on reliability", "Built-in safeguards keep your portfolio analytics and risk summaries available at all times."]
 ];
 
 function PreviewPanel() {
   return (
-    <div className="pointer-events-none absolute inset-x-4 bottom-[-7rem] mx-auto max-w-6xl rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-[0_30px_90px_rgba(15,23,42,0.16)] backdrop-blur sm:bottom-[-8rem] sm:p-4 lg:right-8 lg:left-auto lg:w-[58rem]">
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
-        <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-slate-950">Portfolio workspace</p>
-            <p className="mt-1 text-xs text-slate-500">Holdings, risk, alerts, imports, and activity</p>
-          </div>
-          <div className="flex flex-wrap gap-2 text-xs font-medium">
-            <span className="rounded-md bg-emerald-50 px-2.5 py-1 text-emerald-700">Risk monitored</span>
-            <span className="rounded-md bg-sky-50 px-2.5 py-1 text-sky-700">CSV ready</span>
-          </div>
+    <div className="rounded-2xl border border-slate-200/90 bg-white/95 p-4 shadow-[0_24px_70px_rgba(15,23,42,0.12)] backdrop-blur sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3.5">
+        <div>
+          <p className="text-sm font-semibold text-slate-950">Core Equity Workspace</p>
+          <p className="text-xs text-slate-500">Holdings, risk score, alerts &amp; plain-English summary</p>
         </div>
+        <div className="flex items-center gap-2 text-xs font-medium">
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
+            <CheckCircle2 className="h-3 w-3" />
+            Protected
+          </span>
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">USD</span>
+        </div>
+      </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-4">
-          {["Portfolio value", "Total P&L", "Risk score", "Unread alerts"].map((label) => (
-            <div key={label} className="rounded-lg border border-slate-200 bg-white p-3">
-              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500">{label}</p>
-              <div className="mt-3 h-6 rounded bg-slate-100" />
-            </div>
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Portfolio value</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-slate-950">$148,420</p>
+          <p className="mt-0.5 text-[11px] font-medium text-emerald-700">+$16,240 total gain</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Risk score</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-slate-950">42 / 100</p>
+          <p className="mt-0.5 text-[11px] font-medium text-amber-700">Medium exposure</p>
+        </div>
+        <div className="col-span-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3 sm:col-span-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Top position</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-slate-950">31.4%</p>
+          <p className="mt-0.5 text-[11px] text-slate-500">AAPL concentration</p>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3.5">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-xs font-semibold text-slate-900">Portfolio value over time</p>
+          <BarChart3 className="h-4 w-4 text-emerald-700" />
+        </div>
+        <div className="flex h-24 items-end gap-1.5" aria-hidden="true">
+          {[38, 44, 41, 52, 49, 61, 58, 66, 63, 75, 72, 86, 84, 92].map((height, index) => (
+            <div
+              key={index}
+              className="flex-1 rounded-t bg-gradient-to-t from-emerald-700/80 to-teal-500/75"
+              style={{ height: `${height}%` }}
+            />
           ))}
         </div>
+      </div>
 
-        <div className="mt-4 grid gap-3 lg:grid-cols-[1.4fr_0.8fr]">
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-900">Portfolio value</p>
-              <BarChart3 className="h-4 w-4 text-emerald-700" />
-            </div>
-            <div className="flex h-40 items-end gap-2" aria-hidden="true">
-              {[42, 48, 46, 58, 55, 67, 63, 72, 70, 78, 74, 82].map((height, index) => (
-                <div key={index} className="flex-1 rounded-t bg-emerald-600/70" style={{ height: `${height}%` }} />
-              ))}
-            </div>
-          </div>
-          <div className="grid gap-3">
-            {["Holdings", "Risk alerts", "Import activity"].map((label) => (
-              <div key={label} className="rounded-lg border border-slate-200 bg-white p-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-900">{label}</p>
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                </div>
-                <div className="mt-3 space-y-2">
-                  <div className="h-2 rounded bg-slate-100" />
-                  <div className="h-2 w-2/3 rounded bg-slate-100" />
-                </div>
-              </div>
-            ))}
-          </div>
+      <div className="mt-4 rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-3.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-900">
+            <Sparkles className="h-3.5 w-3.5 text-emerald-700" />
+            Risk &amp; Alert Summary
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 shadow-sm">
+            <ShieldCheck className="h-3 w-3 text-emerald-700" />
+            Informational only
+          </span>
         </div>
+        <p className="mt-2 text-xs leading-relaxed text-slate-700">
+          Based on 24 recorded trades across 5 holdings, your risk score is 42/100 (Medium). AAPL makes up 31.4% of your portfolio value, crossing your 25.0% alert limit.
+        </p>
       </div>
     </div>
   );
@@ -93,79 +125,107 @@ function PreviewPanel() {
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-[#f5f7f2] text-slate-950">
-      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-[#f5f7f2]/90 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-[#f5f7f2]/90 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <Link
+            href="/"
+            className="flex items-center gap-2.5 text-sm font-semibold text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+          >
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-700 text-white shadow-sm">
               <Activity className="h-5 w-5" />
             </span>
-            RiskLens
+            <span className="text-base tracking-tight">RiskLens</span>
           </Link>
-          <nav className="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex" aria-label="Primary navigation">
-            <a href="#capabilities" className="transition-colors hover:text-slate-950">Capabilities</a>
-            <a href="#workflow" className="transition-colors hover:text-slate-950">Workflow</a>
-            <a href="#platform" className="transition-colors hover:text-slate-950">Platform</a>
+
+          <nav className="hidden items-center gap-1 rounded-full border border-slate-200/80 bg-white/75 p-1 text-sm font-medium text-slate-600 shadow-sm md:flex" aria-label="Primary navigation">
+            <a href="#capabilities" className="rounded-full px-3.5 py-1.5 transition-colors hover:bg-slate-100 hover:text-slate-950">
+              Features
+            </a>
+            <a href="#workflow" className="rounded-full px-3.5 py-1.5 transition-colors hover:bg-slate-100 hover:text-slate-950">
+              How it works
+            </a>
+            <a href="#platform" className="rounded-full px-3.5 py-1.5 transition-colors hover:bg-slate-100 hover:text-slate-950">
+              Trust &amp; reliability
+            </a>
           </nav>
+
           <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" className="hidden sm:inline-flex">
+            <Button asChild variant="ghost" size="sm" className="text-slate-700 hover:bg-white/80 hover:text-slate-950">
               <Link href="/login">Sign in</Link>
             </Button>
-            <Button asChild>
-              <Link href="/register">Create account</Link>
+            <Button asChild size="sm">
+              <Link href="/register">Get started</Link>
             </Button>
           </div>
         </div>
       </header>
 
-      <section className="relative min-h-[88svh] overflow-hidden border-b border-slate-200 bg-[radial-gradient(circle_at_15%_20%,rgba(16,185,129,0.16),transparent_28%),linear-gradient(135deg,#f5f7f2_0%,#eef5ed_48%,#f8fafc_100%)]">
-        <div className="absolute inset-0 dashboard-grid opacity-70" />
-        <div className="relative mx-auto flex min-h-[88svh] max-w-7xl items-start px-4 pb-48 pt-16 sm:px-6 sm:pb-56 sm:pt-20 lg:px-8 lg:pb-48">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm">
+      <section className="relative overflow-hidden border-b border-slate-200 bg-[radial-gradient(circle_at_12%_18%,rgba(16,185,129,0.15),transparent_32%),linear-gradient(135deg,#f5f7f2_0%,#eef5ed_48%,#f8fafc_100%)]">
+        <div className="absolute inset-0 dashboard-grid opacity-65" />
+        <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.02fr_0.98fr] lg:px-8 lg:py-24">
+          <div className="max-w-xl animate-page-enter">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/90 px-3.5 py-1 text-xs font-semibold text-emerald-800 shadow-sm">
               <ShieldCheck className="h-3.5 w-3.5" />
-              Portfolio risk workspace
+              Personal portfolio &amp; risk workspace
             </div>
-            <h1 className="mt-7 text-5xl font-semibold tracking-normal text-slate-950 sm:text-6xl lg:text-7xl">
-              RiskLens
+            <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
+              Clear portfolio risk, zero guesswork.
             </h1>
-            <p className="mt-6 max-w-xl text-lg leading-8 text-slate-700">
-              Import trades, understand portfolio exposure, monitor risk thresholds, and review portfolio activity from one focused analytics workspace.
+            <p className="mt-5 text-base leading-7 text-slate-700 sm:text-lg">
+              Import your trades, track real holdings and profit/loss, get alerted when risk limits are crossed, and read plain-English explanations of every number.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button asChild className="w-full sm:w-auto">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Button asChild size="lg" className="w-full sm:w-auto">
                 <Link href="/register">
-                  Create account
+                  Create free workspace
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button asChild variant="outline" className="w-full border-slate-300 bg-white/80 sm:w-auto">
+              <Button asChild variant="outline" size="lg" className="w-full border-slate-300 bg-white/90 sm:w-auto">
                 <Link href="/login">Sign in</Link>
               </Button>
             </div>
-            <div className="mt-10 grid max-w-xl grid-cols-1 gap-3 text-sm text-slate-700 sm:grid-cols-3">
-              {["CSV imports", "Risk alerts", "Live updates"].map((item) => (
-                <div key={item} className="rounded-lg border border-slate-200 bg-white/75 px-4 py-3 shadow-sm">
-                  {item}
-                </div>
-              ))}
+            <div className="mt-10 grid grid-cols-1 gap-3 text-xs font-medium text-slate-700 sm:grid-cols-3">
+              <div className="rounded-xl border border-slate-200/90 bg-white/85 px-4 py-3 shadow-sm">
+                <p className="font-semibold text-slate-950">CSV &amp; Manual</p>
+                <p className="mt-0.5 text-slate-500">Clean trade records</p>
+              </div>
+              <div className="rounded-xl border border-slate-200/90 bg-white/85 px-4 py-3 shadow-sm">
+                <p className="font-semibold text-slate-950">Live Alerts</p>
+                <p className="mt-0.5 text-slate-500">Instant breach notices</p>
+              </div>
+              <div className="rounded-xl border border-slate-200/90 bg-white/85 px-4 py-3 shadow-sm">
+                <p className="font-semibold text-slate-950">Smart Summaries</p>
+                <p className="mt-0.5 text-slate-500">Plain-English insights</p>
+              </div>
             </div>
           </div>
+
+          <div className="animate-page-enter">
+            <PreviewPanel />
+          </div>
         </div>
-        <PreviewPanel />
       </section>
 
-      <section id="capabilities" className="px-4 pb-16 pt-36 sm:px-6 sm:pt-44 lg:px-8">
+      <section id="capabilities" className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="max-w-2xl">
-            <p className="text-sm font-semibold text-emerald-700">Capabilities</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-normal text-slate-950 sm:text-4xl">Everything needed for portfolio review</h2>
-            <p className="mt-4 text-sm leading-6 text-slate-600">RiskLens keeps trade records, analytics, alerting, and activity in one consistent workflow.</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Features</p>
+            <h2 className="mt-2.5 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+              Everything needed for disciplined portfolio review
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              RiskLens brings your trade history, risk metrics, threshold alerts, and clear metric explanations into one calm workspace.
+            </p>
           </div>
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
+          <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
             {capabilities.map((item) => {
               const Icon = item.icon;
               return (
-                <article key={item.title} className="rounded-xl border border-slate-200 bg-white p-6 shadow-soft">
+                <article
+                  key={item.title}
+                  className="rounded-xl border border-slate-200 bg-white p-6 shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300"
+                >
                   <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
                     <Icon className="h-5 w-5" />
                   </div>
@@ -178,18 +238,20 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="workflow" className="border-y border-slate-200 bg-white px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1.2fr]">
+      <section id="workflow" className="border-y border-slate-200 bg-white px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
           <div>
-            <p className="text-sm font-semibold text-emerald-700">Workflow</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-normal text-slate-950">From raw trades to risk context</h2>
-            <p className="mt-4 text-sm leading-6 text-slate-600">The app is designed around a practical review cycle: collect records, calculate analytics, monitor thresholds, and inspect changes.</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">How it works</p>
+            <h2 className="mt-2.5 text-3xl font-semibold tracking-tight text-slate-950">From raw trades to complete clarity</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              Built around a simple review habit: organize your trades, understand your exposure, watch key thresholds, and save clean reports.
+            </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             {workflow.map(([title, description], index) => (
-              <div key={title} className="rounded-xl border border-slate-200 bg-[#f8faf7] p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Step {index + 1}</p>
-                <h3 className="mt-3 text-base font-semibold text-slate-950">{title}</h3>
+              <div key={title} className="rounded-xl border border-slate-200 bg-[#f8faf7] p-5 transition-colors hover:bg-[#f2f7f1]">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700">Step {index + 1}</p>
+                <h3 className="mt-2.5 text-base font-semibold text-slate-950">{title}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
               </div>
             ))}
@@ -197,24 +259,27 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="platform" className="px-4 py-16 sm:px-6 lg:px-8">
+      <section id="platform" className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-emerald-700">Platform</p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-normal text-slate-950">Built for day-to-day portfolio review</h2>
+              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Trust &amp; reliability</p>
+              <h2 className="mt-2.5 text-3xl font-semibold tracking-tight text-slate-950">Built for everyday clarity and peace of mind</h2>
             </div>
             <Button asChild variant="outline" className="w-full bg-white sm:w-auto">
-              <Link href="/register">Open workspace</Link>
+              <Link href="/register">
+                Open workspace
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </Button>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             {platform.map(([title, description], index) => {
-              const icons = [DatabaseZap, UploadCloud, LockKeyhole, LineChart];
-              const Icon = icons[index] ?? DatabaseZap;
+              const icons = [ShieldCheck, UploadCloud, Zap, LockKeyhole];
+              const Icon = icons[index] ?? ShieldCheck;
               return (
                 <div key={title} className="flex gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>
@@ -227,6 +292,66 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      <footer className="border-t border-slate-200 bg-white">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="grid gap-8 md:grid-cols-[1.4fr_1fr_1fr]">
+            <div className="space-y-3">
+              <Link href="/" className="inline-flex items-center gap-2.5 text-sm font-semibold text-slate-950">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700 text-white shadow-sm">
+                  <Activity className="h-4 w-4" />
+                </span>
+                <span className="text-base tracking-tight">RiskLens</span>
+              </Link>
+              <p className="max-w-sm text-xs leading-5 text-slate-600">
+                A calm portfolio tracking and risk-visibility workspace for reviewing holdings, monitoring alert limits, and exporting factual summaries.
+              </p>
+            </div>
+
+            <div className="space-y-2.5 text-xs">
+              <p className="font-semibold uppercase tracking-wider text-slate-900">Product</p>
+              <ul className="space-y-2 text-slate-600">
+                <li>
+                  <a href="#capabilities" className="transition-colors hover:text-slate-950">
+                    Features
+                  </a>
+                </li>
+                <li>
+                  <a href="#workflow" className="transition-colors hover:text-slate-950">
+                    How it works
+                  </a>
+                </li>
+                <li>
+                  <a href="#platform" className="transition-colors hover:text-slate-950">
+                    Trust &amp; reliability
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div className="space-y-2.5 text-xs">
+              <p className="font-semibold uppercase tracking-wider text-slate-900">Workspace</p>
+              <ul className="space-y-2 text-slate-600">
+                <li>
+                  <Link href="/login" className="transition-colors hover:text-slate-950">
+                    Sign in
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/register" className="font-medium text-emerald-700 transition-colors hover:text-emerald-800 hover:underline">
+                    Create free account
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-10 flex flex-col gap-2 border-t border-slate-100 pt-6 text-[11px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+            <p>Informational portfolio recordkeeping and risk visibility only. Not financial, investment, or legal advice.</p>
+            <p>© {new Date().getFullYear()} RiskLens</p>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }
