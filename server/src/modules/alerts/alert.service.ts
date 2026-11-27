@@ -2,6 +2,7 @@ import { activityService } from "../activity/activity.service.js";
 import { analyticsService } from "../analytics/analytics.service.js";
 import { notificationService } from "../notifications/notification.service.js";
 import { portfolioService } from "../portfolio/portfolio.service.js";
+import { deleteByPattern, portfolioCacheKey } from "../../utils/cache.js";
 import { notFound } from "../../utils/errors.js";
 import { toObjectId } from "../../utils/objectId.js";
 import { paginationMeta, type Pagination } from "../../utils/pagination.js";
@@ -28,13 +29,18 @@ export const alertService = {
       ...input
     });
 
-    await activityService.record({
-      userId,
-      portfolioId,
-      type: "ALERT_CREATED",
-      message: `Created ${input.type} alert at ${input.threshold}%`,
-      metadata: { alertId: alert._id.toString() }
-    });
+    await Promise.all([
+      deleteByPattern(portfolioCacheKey(portfolioId, "risk-narrative")),
+      activityService.record({
+        userId,
+        portfolioId,
+        type: "ALERT_CREATED",
+        message: `Created ${input.type} alert at ${input.threshold}%`,
+        metadata: { alertId: alert._id.toString() }
+      })
+    ]);
+
+    void this.evaluate({ userId, portfolioId }).catch(() => undefined);
 
     return alert;
   },
@@ -64,13 +70,20 @@ export const alertService = {
     });
     if (!alert) throw notFound("Alert");
 
-    await activityService.record({
-      userId,
-      portfolioId: alert.portfolioId,
-      type: "ALERT_UPDATED",
-      message: `Updated ${alert.type} alert`,
-      metadata: { alertId }
-    });
+    await Promise.all([
+      deleteByPattern(portfolioCacheKey(alert.portfolioId.toString(), "risk-narrative")),
+      activityService.record({
+        userId,
+        portfolioId: alert.portfolioId,
+        type: "ALERT_UPDATED",
+        message: `Updated ${alert.type} alert`,
+        metadata: { alertId }
+      })
+    ]);
+
+    if (alert.isActive) {
+      void this.evaluate({ userId, portfolioId: alert.portfolioId.toString() }).catch(() => undefined);
+    }
 
     return alert;
   },
@@ -79,13 +92,16 @@ export const alertService = {
     const alert = await Alert.findOneAndDelete({ _id: toObjectId(alertId, "alertId"), userId: toObjectId(userId, "userId") });
     if (!alert) throw notFound("Alert");
 
-    await activityService.record({
-      userId,
-      portfolioId: alert.portfolioId,
-      type: "ALERT_DELETED",
-      message: `Deleted ${alert.type} alert`,
-      metadata: { alertId }
-    });
+    await Promise.all([
+      deleteByPattern(portfolioCacheKey(alert.portfolioId.toString(), "risk-narrative")),
+      activityService.record({
+        userId,
+        portfolioId: alert.portfolioId,
+        type: "ALERT_DELETED",
+        message: `Deleted ${alert.type} alert`,
+        metadata: { alertId }
+      })
+    ]);
   },
 
   async evaluate(input: { userId?: string; portfolioId?: string; requestId?: string } = {}) {
@@ -138,7 +154,8 @@ export const alertService = {
           type: "ALERT_TRIGGERED",
           message: `${alert.type} alert triggered at ${value.toFixed(2)}%`,
           metadata: { alertId: alert._id.toString(), value, threshold }
-        })
+        }),
+        deleteByPattern(portfolioCacheKey(alert.portfolioId.toString(), "risk-narrative"), input.requestId)
       ]);
 
       triggered.push({

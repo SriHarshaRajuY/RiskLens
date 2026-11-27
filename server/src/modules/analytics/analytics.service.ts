@@ -49,7 +49,11 @@ export const analyticsService = {
     return withCache(
       portfolioCacheKey(portfolioId, "summary"),
       async () => {
-        const trades = await getPortfolioTrades(userId, portfolioId);
+        const portfolio = await portfolioService.getOwned(userId, portfolioId);
+        const rawTrades = await Trade.find({ userId: toObjectId(userId, "userId"), portfolioId: toObjectId(portfolioId, "portfolioId") })
+          .sort({ tradeDate: 1, createdAt: 1 })
+          .lean();
+        const trades = rawTrades.map(toLedgerEntry);
         const holdings = await buildHoldings(trades, requestId);
         const stats = ledgerStats(trades);
         const totalPortfolioValue = holdings.reduce((total, holding) => total + holding.marketValue, 0);
@@ -66,6 +70,7 @@ export const analyticsService = {
         const worst = [...holdings].sort((a, b) => a.totalPnl - b.totalPnl)[0] ?? null;
 
         return {
+          baseCurrency: portfolio.baseCurrency,
           totalPortfolioValue: round(totalPortfolioValue, 2),
           totalInvestedAmount: stats.totalInvested,
           openCostBasis: stats.openCostBasis,
