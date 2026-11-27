@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
+import { RiskNarrativeCard } from "@/components/dashboard/RiskNarrativeCard";
 import { WorkspaceHeader } from "@/components/dashboard/WorkspaceHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -90,6 +91,7 @@ export default function AlertsPage() {
         openLabel="Open details"
       />
       <AlertsPanel portfolioId={portfolioId} />
+      <RiskNarrativeCard portfolioId={portfolioId} defaultTab="alerts" />
     </div>
   );
 }

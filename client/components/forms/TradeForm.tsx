@@ -50,6 +50,7 @@ export function TradeForm({ portfolioId }: { portfolioId: string }) {
       queryClient.invalidateQueries({ queryKey: ["summary", portfolioId] });
       queryClient.invalidateQueries({ queryKey: ["holdings", portfolioId] });
       queryClient.invalidateQueries({ queryKey: ["risk", portfolioId] });
+      queryClient.invalidateQueries({ queryKey: ["risk-narrative", portfolioId] });
       queryClient.invalidateQueries({ queryKey: ["returns", portfolioId] });
       queryClient.invalidateQueries({ queryKey: ["trades", portfolioId] });
       queryClient.invalidateQueries({ queryKey: ["activity", portfolioId] });
@@ -80,7 +81,7 @@ export function TradeForm({ portfolioId }: { portfolioId: string }) {
           </div>
           <div className="space-y-2.5">
             <Label>Side</Label>
-            <select className="h-11 w-full rounded-md border bg-background px-3.5 text-sm font-medium outline-none transition focus:ring-2 focus:ring-ring" {...form.register("side")}>
+            <select className="h-10 w-full rounded-lg border bg-background px-3.5 text-sm font-medium outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/20" {...form.register("side")}>
               <option value="BUY">BUY</option>
               <option value="SELL">SELL</option>
             </select>
@@ -106,7 +107,7 @@ export function TradeForm({ portfolioId }: { portfolioId: string }) {
             {form.formState.errors.tradeDate ? <p className="text-sm text-destructive">{form.formState.errors.tradeDate.message}</p> : null}
           </div>
           <Button type="submit" className="w-full sm:col-span-2" disabled={mutation.isPending}>
-            <Plus className="h-4 w-4 mr-1.5" />
+            <Plus className="h-4 w-4" />
             Add trade
           </Button>
         </form>

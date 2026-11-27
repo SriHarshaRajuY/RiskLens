@@ -100,6 +100,7 @@ export function TradeUploadBox({ portfolioId }: { portfolioId: string }) {
     queryClient.invalidateQueries({ queryKey: ["summary", portfolioId] });
     queryClient.invalidateQueries({ queryKey: ["holdings", portfolioId] });
     queryClient.invalidateQueries({ queryKey: ["risk", portfolioId] });
+    queryClient.invalidateQueries({ queryKey: ["risk-narrative", portfolioId] });
     queryClient.invalidateQueries({ queryKey: ["returns", portfolioId] });
     queryClient.invalidateQueries({ queryKey: ["trades", portfolioId] });
     queryClient.invalidateQueries({ queryKey: ["activity", portfolioId] });
@@ -139,7 +140,7 @@ export function TradeUploadBox({ portfolioId }: { portfolioId: string }) {
           }}
           disabled={mutation.isPending}
         >
-          <Upload className="h-4 w-4 mr-1.5" />
+          <Upload className="h-4 w-4" />
           {mutation.isPending ? "Queueing upload..." : "Upload trades"}
         </Button>
 

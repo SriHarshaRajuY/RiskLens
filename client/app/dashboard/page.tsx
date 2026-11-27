@@ -8,6 +8,7 @@ import { AllocationChart } from "@/components/charts/AllocationChart";
 import { PerformanceChart } from "@/components/charts/PerformanceChart";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { RiskMetricsPanel } from "@/components/dashboard/RiskMetricsPanel";
+import { RiskNarrativeCard } from "@/components/dashboard/RiskNarrativeCard";
 import { RiskScoreCard } from "@/components/dashboard/RiskScoreCard";
 import { WorkspaceHeader } from "@/components/dashboard/WorkspaceHeader";
 import { Button } from "@/components/ui/button";
@@ -100,11 +101,12 @@ export default function DashboardPage() {
   }
 
   const summary = summaryQuery.data;
+  const currency = summary?.baseCurrency ?? selected.baseCurrency ?? "USD";
   const hasTrades = (summary?.tradeCount ?? 0) > 0;
   const loadingValue = summaryQuery.isLoading ? "Loading" : "-";
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-6">
       <WorkspaceHeader
         eyebrow="Portfolio overview"
         title={selected.name}
@@ -116,37 +118,39 @@ export default function DashboardPage() {
         openLabel="Open details"
       />
 
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           title="Portfolio value"
-          value={hasTrades ? formatCurrency(summary?.totalPortfolioValue ?? 0) : loadingValue}
+          value={hasTrades ? formatCurrency(summary?.totalPortfolioValue ?? 0, currency) : loadingValue}
           detail={summaryQuery.isLoading ? "Loading analytics" : hasTrades ? `${summary?.holdingsCount ?? 0} holdings` : "Import trades to calculate"}
         />
         <MetricCard
           title="Total P&L"
-          value={hasTrades ? formatCurrency(summary?.totalPnl ?? 0) : loadingValue}
+          value={hasTrades ? formatCurrency(summary?.totalPnl ?? 0, currency) : loadingValue}
           tone={(summary?.totalPnl ?? 0) >= 0 ? "good" : "bad"}
-          detail={summaryQuery.isLoading ? "Loading analytics" : hasTrades ? `Daily ${formatCurrency(summary?.dailyPnl ?? 0)}` : "No P&L yet"}
+          detail={summaryQuery.isLoading ? "Loading analytics" : hasTrades ? `Daily ${formatCurrency(summary?.dailyPnl ?? 0, currency)}` : "No P&L yet"}
         />
-        <MetricCard title="Realized P&L" value={hasTrades ? formatCurrency(summary?.realizedPnl ?? 0) : loadingValue} tone="neutral" />
+        <MetricCard title="Realized P&L" value={hasTrades ? formatCurrency(summary?.realizedPnl ?? 0, currency) : loadingValue} tone="neutral" />
         <MetricCard
           title="Unrealized P&L"
-          value={hasTrades ? formatCurrency(summary?.unrealizedPnl ?? 0) : loadingValue}
+          value={hasTrades ? formatCurrency(summary?.unrealizedPnl ?? 0, currency) : loadingValue}
           tone={(summary?.unrealizedPnl ?? 0) >= 0 ? "good" : "bad"}
         />
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <PerformanceChart data={returnsQuery.data ?? []} />
+        <PerformanceChart data={returnsQuery.data ?? []} currency={currency} />
         <RiskScoreCard risk={riskQuery.data} />
       </div>
 
       <div className="grid gap-5 xl:grid-cols-3">
         <div className="xl:col-span-2">
-          <RiskMetricsPanel risk={riskQuery.data} />
+          <RiskMetricsPanel risk={riskQuery.data} dailyReturn={summary?.dailyReturn} />
         </div>
         <AllocationChart allocation={summary?.allocation ?? []} />
       </div>
+
+      <RiskNarrativeCard portfolioId={selectedPortfolioId} />
 
       <div className="grid gap-5 xl:grid-cols-2">
         <ActivityFeed items={activityQuery.data ?? []} />
