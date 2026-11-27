@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { ok } from "../../utils/apiResponse.js";
 import { requestParam } from "../../utils/request.js";
 import { analyticsService } from "./analytics.service.js";
+import { portfolioQaService } from "./portfolioQa.service.js";
 import { riskNarrativeService } from "./riskNarrative.service.js";
 
 export const analyticsController = {
@@ -34,6 +35,14 @@ export const analyticsController = {
     const refresh = req.query.refresh === "true";
     const data = await riskNarrativeService.explainPortfolioRisk(req.user!.id, requestParam(req, "portfolioId"), {
       refresh,
+      requestId: req.requestId
+    });
+    return ok(res, data);
+  },
+
+  async portfolioQa(req: Request, res: Response): Promise<Response> {
+    const { question } = req.body as { question: string };
+    const data = await portfolioQaService.ask(req.user!.id, requestParam(req, "portfolioId"), question, {
       requestId: req.requestId
     });
     return ok(res, data);
