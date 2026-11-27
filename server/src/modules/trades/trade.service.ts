@@ -1,6 +1,8 @@
 import { activityService } from "../activity/activity.service.js";
 import { portfolioService } from "../portfolio/portfolio.service.js";
 import { buildHoldings, replayTrades, type TradeLedgerEntry } from "../analytics/holdings.service.js";
+import { enqueueAlertEvaluation } from "../../queues/alertEvaluation.queue.js";
+import { enqueueSnapshot } from "../../queues/snapshot.queue.js";
 import { invalidatePortfolioCache } from "../../utils/cache.js";
 import { notFound } from "../../utils/errors.js";
 import { toObjectId } from "../../utils/objectId.js";
@@ -73,6 +75,11 @@ export const tradeService = {
         })
       ]);
 
+      void Promise.allSettled([
+        enqueueSnapshot({ userId, portfolioId, requestId }),
+        enqueueAlertEvaluation({ userId, portfolioId, requestId })
+      ]);
+
       return trade;
     });
   },
@@ -127,6 +134,11 @@ export const tradeService = {
         })
       ]);
 
+      void Promise.allSettled([
+        enqueueSnapshot({ userId, portfolioId: existing.portfolioId.toString(), requestId }),
+        enqueueAlertEvaluation({ userId, portfolioId: existing.portfolioId.toString(), requestId })
+      ]);
+
       return existing;
     });
   },
@@ -148,6 +160,11 @@ export const tradeService = {
           message: `Deleted ${trade.symbol} trade`,
           metadata: { tradeId }
         })
+      ]);
+
+      void Promise.allSettled([
+        enqueueSnapshot({ userId, portfolioId: trade.portfolioId.toString(), requestId }),
+        enqueueAlertEvaluation({ userId, portfolioId: trade.portfolioId.toString(), requestId })
       ]);
     });
   },

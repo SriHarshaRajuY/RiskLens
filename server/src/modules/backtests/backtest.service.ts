@@ -13,7 +13,7 @@ function movingAverage(points: PricePoint[], index: number, window: number): num
   return mean(slice.map((point) => point.close));
 }
 
-function metricsFromEquity(values: number[], initialCapital: number) {
+export function metricsFromEquity(values: number[], initialCapital: number) {
   const dailyReturns = calculateDailyReturns(values);
   const finalCapital = values.at(-1) ?? initialCapital;
   const dailyVolatility = standardDeviation(dailyReturns);
@@ -25,7 +25,7 @@ function metricsFromEquity(values: number[], initialCapital: number) {
   };
 }
 
-function runBuyAndHold(points: PricePoint[], initialCapital: number) {
+export function runBuyAndHold(points: PricePoint[], initialCapital: number) {
   const firstPrice = points[0]?.close ?? 1;
   const shares = initialCapital / firstPrice;
   const equityCurve = points.map((point) => ({
@@ -39,7 +39,7 @@ function runBuyAndHold(points: PricePoint[], initialCapital: number) {
   };
 }
 
-function runMovingAverageCrossover(points: PricePoint[], initialCapital: number, shortWindow: number, longWindow: number) {
+export function runMovingAverageCrossover(points: PricePoint[], initialCapital: number, shortWindow: number, longWindow: number) {
   let cash = initialCapital;
   let shares = 0;
   let inPosition = false;

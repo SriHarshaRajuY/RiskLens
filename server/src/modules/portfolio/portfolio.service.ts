@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { activityService } from "../activity/activity.service.js";
 import { Alert } from "../alerts/alert.model.js";
+import { CachedAnalyticsMetadata } from "../analytics/cachedAnalyticsMetadata.model.js";
 import { PortfolioSnapshot } from "../snapshots/portfolioSnapshot.model.js";
 import { Trade } from "../trades/trade.model.js";
 import { UploadJob } from "../uploads/uploadJob.model.js";
@@ -111,6 +112,7 @@ export const portfolioService = {
         await PortfolioSnapshot.deleteMany({ userId: userObjectId, portfolioId: portfolioObjectId }).session(session);
         await UploadJob.deleteMany({ userId: userObjectId, portfolioId: portfolioObjectId }).session(session);
         await Notification.deleteMany({ userId: userObjectId, portfolioId: portfolioObjectId }).session(session);
+        await CachedAnalyticsMetadata.deleteMany({ portfolioId: portfolioObjectId }).session(session);
         await Portfolio.deleteOne({ _id: portfolioObjectId, userId: userObjectId }).session(session);
       });
     } finally {
