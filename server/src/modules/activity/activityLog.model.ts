@@ -29,7 +29,8 @@ const activityLogSchema = new Schema(
         "ALERT_TRIGGERED",
         "ALERT_UPDATED",
         "ALERT_DELETED",
-        "BACKTEST_COMPLETED"
+        "BACKTEST_COMPLETED",
+        "RISK_NARRATIVE_GENERATED"
       ],
       required: true,
       index: true

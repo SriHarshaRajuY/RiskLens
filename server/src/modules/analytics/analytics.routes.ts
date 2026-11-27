@@ -34,3 +34,8 @@ analyticsRoutes.get(
   validateParams(portfolioIdParamsSchema),
   asyncHandler(analyticsController.pnl)
 );
+analyticsRoutes.get(
+  "/portfolios/:portfolioId/risk-narrative",
+  validateParams(portfolioIdParamsSchema),
+  asyncHandler(analyticsController.riskNarrative)
+);
