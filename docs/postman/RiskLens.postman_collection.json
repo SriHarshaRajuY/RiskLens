@@ -97,7 +97,8 @@
         { "name": "Portfolio Summary", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios/{{portfolioId}}/summary" } },
         { "name": "Holdings", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios/{{portfolioId}}/holdings" } },
         { "name": "Risk Metrics", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios/{{portfolioId}}/risk" } },
-        { "name": "Returns", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios/{{portfolioId}}/returns" } }
+        { "name": "Returns", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios/{{portfolioId}}/returns" } },
+        { "name": "Descriptive Risk Narrative", "request": { "method": "GET", "url": "{{baseUrl}}/portfolios/{{portfolioId}}/risk-narrative" } }
       ]
     },
     {

@@ -89,6 +89,24 @@ export const openApiDocument = {
           shortWindow: { type: "integer", example: 20 },
           longWindow: { type: "integer", example: 50 }
         }
+      },
+      RiskNarrative: {
+        type: "object",
+        properties: {
+          executiveSummary: { type: "string" },
+          metricExplanations: { type: "array", items: { type: "object" } },
+          alertNarratives: { type: "array", items: { type: "object" } },
+          dataLimitations: { type: "array", items: { type: "string" } },
+          source: { type: "string", enum: ["gemini", "deterministic-fallback"] },
+          fallbackReason: {
+            type: "string",
+            enum: ["missing_api_key", "quota_exceeded", "timeout", "provider_error", "invalid_output"]
+          },
+          model: { type: "string", nullable: true },
+          generatedAt: { type: "string", format: "date-time" },
+          cached: { type: "boolean" },
+          disclaimer: { type: "string" }
+        }
       }
     },
     responses: {
@@ -140,6 +158,24 @@ export const openApiDocument = {
     "/portfolios/{portfolioId}/holdings": { get: { tags: ["Analytics"], summary: "Get holdings", security: [{ bearerAuth: [] }, { cookieAuth: [] }], parameters: [{ name: "portfolioId", in: "path", required: true, schema: { type: "string" } }], responses: { "200": { description: "Holdings" } } } },
     "/portfolios/{portfolioId}/risk": { get: { tags: ["Analytics"], summary: "Get risk metrics", security: [{ bearerAuth: [] }, { cookieAuth: [] }], parameters: [{ name: "portfolioId", in: "path", required: true, schema: { type: "string" } }], responses: { "200": { description: "Risk metrics" } } } },
     "/portfolios/{portfolioId}/returns": { get: { tags: ["Analytics"], summary: "Get return series", security: [{ bearerAuth: [] }, { cookieAuth: [] }], parameters: [{ name: "portfolioId", in: "path", required: true, schema: { type: "string" } }], responses: { "200": { description: "Returns" } } } },
+    "/portfolios/{portfolioId}/pnl": { get: { tags: ["Analytics"], summary: "Get realized and unrealized P&L breakdown", security: [{ bearerAuth: [] }, { cookieAuth: [] }], parameters: [{ name: "portfolioId", in: "path", required: true, schema: { type: "string" } }], responses: { "200": { description: "P&L breakdown" } } } },
+    "/portfolios/{portfolioId}/risk-narrative": {
+      get: {
+        tags: ["Analytics"],
+        summary: "Get descriptive, non-advisory risk and alert narrative (Gemini AI with deterministic fallback)",
+        security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+        parameters: [
+          { name: "portfolioId", in: "path", required: true, schema: { type: "string" } },
+          { name: "refresh", in: "query", required: false, schema: { type: "boolean", default: false }, description: "Bypass cache and regenerate narrative" }
+        ],
+        responses: {
+          "200": {
+            description: "Descriptive risk narrative",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/RiskNarrative" } } }
+          }
+        }
+      }
+    },
     "/portfolios/{portfolioId}/alerts": {
       get: { tags: ["Alerts"], summary: "List alerts", security: [{ bearerAuth: [] }, { cookieAuth: [] }], parameters: [{ name: "portfolioId", in: "path", required: true, schema: { type: "string" } }], responses: { "200": { description: "Alerts" } } },
       post: { tags: ["Alerts"], summary: "Create alert", security: [{ bearerAuth: [] }, { cookieAuth: [] }], parameters: [{ name: "portfolioId", in: "path", required: true, schema: { type: "string" } }], requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["type", "threshold"], properties: { type: { type: "string", enum: ["DAILY_LOSS", "MAX_DRAWDOWN", "CONCENTRATION", "VOLATILITY"] }, threshold: { type: "number", example: 25 } } } } } }, responses: { "201": { description: "Alert created" } } }
